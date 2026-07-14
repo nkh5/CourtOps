@@ -1,0 +1,45 @@
+# Build output
+/courtops
+/bin/
+/dist/
+
+# Local configuration and secrets. The deployed host keeps its own .env with
+# chmod 600; nothing in this repository should ever contain a real secret.
+.env
+deploy/.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.keystore
+id_rsa
+id_ed25519
+credentials.json
+service-account*.json
+
+# Backups: these contain real roster data (email addresses or club IDs) and must
+# never be committed.
+/backups/
+*.sql.gz
+*.sql.gz.enc
+*.dump
+*.backup
+
+# Real roster exports. testdata/ holds synthetic files only.
+/roster-exports/
+*.private.csv
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Host-only release state and preserved production environment files.
+.env.before-*
+deploy/.env.before-*
+deploy/release.env*
+deploy/previous-image.txt
+/previous-image.txt
