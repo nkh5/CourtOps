@@ -1,0 +1,24 @@
+# Local development only. The deployment compose file is deploy/compose.yaml.
+#
+# The PostgreSQL major version here must match the one on the host, because a
+# pg_dump taken from one major version does not restore into another.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: courtops-db-dev
+    environment:
+      POSTGRES_USER: courtops
+      POSTGRES_PASSWORD: courtops
+      POSTGRES_DB: courtops
+    ports:
+      - "5433:5432"   # 5433 on the host, to stay out of the way of a local PostgreSQL
+    volumes:
+      - courtops-dev-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U courtops -d courtops"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  courtops-dev-data:
