@@ -97,3 +97,29 @@ func TestReadOnlyDemoNeedsNoLogin(t *testing.T) {
 		t.Fatalf("a read-only demo was rejected: %v", err)
 	}
 }
+
+func TestDevelopmentIsPermissive(t *testing.T) {
+	cfg := Config{
+		Env:          EnvDevelopment,
+		DatabaseURL:  "postgres://localhost/courtops",
+		DevOrganizer: "dev@example.com",
+		BaseURL:      "http://localhost:8080",
+	}
+	if err := cfg.validate(); err != nil {
+		t.Fatalf("local development config was rejected: %v", err)
+	}
+}
+
+func TestGoogleLoginWithoutOrganizersIsRefused(t *testing.T) {
+	cfg := base()
+	cfg.Env = EnvDevelopment
+	cfg.AllowedOrganizers = nil
+
+	err := cfg.validate()
+	if err == nil {
+		t.Fatal("expected a refusal: sign-in would be configured but nobody could use it")
+	}
+	if !strings.Contains(err.Error(), "nobody could sign in") {
+		t.Errorf("error = %q", err)
+	}
+}
