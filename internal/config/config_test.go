@@ -135,3 +135,30 @@ func TestAllowsOrganizerIgnoresCaseAndSpace(t *testing.T) {
 		t.Error("an unlisted account was allowed")
 	}
 }
+
+func TestSplitList(t *testing.T) {
+	got := splitList(" A@example.com ,b@example.com,, ")
+	want := []string{"a@example.com", "b@example.com"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	}
+}
+
+func TestInvalidSafetyFlagsAreRefused(t *testing.T) {
+	for _, key := range []string{"COURTOPS_READ_ONLY", "COURTOPS_RATINGS"} {
+		t.Run(key, func(t *testing.T) {
+			t.Setenv("COURTOPS_READ_ONLY", "")
+			t.Setenv("COURTOPS_RATINGS", "")
+			t.Setenv(key, "tru")
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), key) {
+				t.Fatalf("invalid %s was not reported: %v", key, err)
+			}
+		})
+	}
+}
