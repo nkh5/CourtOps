@@ -162,3 +162,29 @@ func TestInvalidSafetyFlagsAreRefused(t *testing.T) {
 		})
 	}
 }
+
+func TestProductionRequiresRealHTTPSURLs(t *testing.T) {
+	for _, raw := range []string{"courtops.example.com", "//courtops.example.com", "https:", "ftp://example.com", "https://user:password@example.com", "https://example.com?redirect=elsewhere"} {
+		t.Run(raw, func(t *testing.T) {
+			cfg := base()
+			cfg.BaseURL = raw
+			if err := cfg.validate(); err == nil {
+				t.Fatal("invalid base URL accepted")
+			}
+			cfg = base()
+			cfg.Google.RedirectURL = raw
+			if err := cfg.validate(); err == nil {
+				t.Fatal("invalid callback URL accepted")
+			}
+		})
+	}
+}
+
+func TestReadOnlyWithLoginStillRequiresSigningSecret(t *testing.T) {
+	cfg := base()
+	cfg.ReadOnly = true
+	cfg.SessionSecret = nil
+	if err := cfg.validate(); err == nil {
+		t.Fatal("Google login accepted without a signing secret")
+	}
+}
