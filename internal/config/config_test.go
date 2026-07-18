@@ -123,3 +123,15 @@ func TestGoogleLoginWithoutOrganizersIsRefused(t *testing.T) {
 		t.Errorf("error = %q", err)
 	}
 }
+
+func TestAllowsOrganizerIgnoresCaseAndSpace(t *testing.T) {
+	cfg := Config{AllowedOrganizers: []string{"organizer@example.com"}}
+	for _, email := range []string{"organizer@example.com", "Organizer@Example.com", "  organizer@example.com  "} {
+		if !cfg.AllowsOrganizer(email) {
+			t.Errorf("AllowsOrganizer(%q) = false, want true", email)
+		}
+	}
+	if cfg.AllowsOrganizer("someone.else@example.com") {
+		t.Error("an unlisted account was allowed")
+	}
+}
