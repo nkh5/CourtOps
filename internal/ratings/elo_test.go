@@ -69,4 +69,21 @@ func TestRatingTotalIsConserved(t *testing.T) {
 	}
 }
 
+func TestExpectedIsSymmetric(t *testing.T) {
+	for _, pair := range [][2]float64{{1000, 1000}, {1200, 800}, {1337.5, 902.25}} {
+		a, b := pair[0], pair[1]
+		if sum := Expected(a, b) + Expected(b, a); math.Abs(sum-1) > tolerance {
+			t.Errorf("Expected(%v,%v)+Expected(%v,%v) = %v, want 1", a, b, b, a, sum)
+		}
+	}
+}
+
+func TestFourHundredPointGapIsTenToOne(t *testing.T) {
+	// The 400-point scale constant: a 400-point lead is a 10:1 expectation.
+	got := Expected(1400, 1000)
+	if math.Abs(got-10.0/11.0) > tolerance {
+		t.Errorf("Expected(1400,1000) = %v, want %v", got, 10.0/11.0)
+	}
+}
+
 func sum(v [4]float64) float64 { return v[0] + v[1] + v[2] + v[3] }
