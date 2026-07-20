@@ -86,4 +86,22 @@ func TestFourHundredPointGapIsTenToOne(t *testing.T) {
 	}
 }
 
+func TestLosingTeamNeverGains(t *testing.T) {
+	// Even a heavy favourite that loses must drop.
+	u := TeamUpdate([2]float64{1600, 1600}, [2]float64{800, 800}, false)
+	if u.DeltaA >= 0 {
+		t.Errorf("loser deltaA = %v, want negative", u.DeltaA)
+	}
+	if u.DeltaB() <= 0 {
+		t.Errorf("winner deltaB = %v, want positive", u.DeltaB())
+	}
+}
+
+func TestUpdateIsBoundedByK(t *testing.T) {
+	u := TeamUpdate([2]float64{200, 200}, [2]float64{2800, 2800}, true)
+	if u.DeltaA > K {
+		t.Errorf("deltaA = %v, must not exceed K = %v", u.DeltaA, K)
+	}
+}
+
 func sum(v [4]float64) float64 { return v[0] + v[1] + v[2] + v[3] }
