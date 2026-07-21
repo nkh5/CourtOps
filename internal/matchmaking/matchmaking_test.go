@@ -140,6 +140,32 @@ func assertSameSet(t *testing.T, got, want [4]int64) {
 	}
 }
 
+// An unavailable player is simply never passed in; the store filters by state.
+// This test documents that the function has no other notion of eligibility.
+func TestSelectNextUsesOnlyWhatItIsGiven(t *testing.T) {
+	eligible := []Candidate{cand(1, 1000, 0), cand(2, 1000, 1), cand(3, 1000, 2), cand(4, 1000, 3)}
+	got, err := SelectNext(eligible)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ids(got) != [4]int64{1, 2, 3, 4} {
+		t.Errorf("got %v, want the four supplied players", ids(got))
+	}
+}
+
+func TestSelectNextDoesNotMutateInput(t *testing.T) {
+	in := []Candidate{cand(4, 1000, 3), cand(1, 1000, 0), cand(3, 1000, 2), cand(2, 1000, 1)}
+	before := append([]Candidate(nil), in...)
+	if _, err := SelectNext(in); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for i := range in {
+		if in[i].PlayerID != before[i].PlayerID {
+			t.Fatalf("input slice was reordered at %d: %v", i, in)
+		}
+	}
+}
+
 func benchmarkSelectNext(b *testing.B, n int) {
 	in := make([]Candidate, n)
 	for i := range in {
