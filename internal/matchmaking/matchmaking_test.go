@@ -166,6 +166,25 @@ func TestSelectNextDoesNotMutateInput(t *testing.T) {
 	}
 }
 
+func TestSelectNextIsDeterministic(t *testing.T) {
+	in := []Candidate{cand(1, 1150, 0), cand(2, 990, 1), cand(3, 1010, 2), cand(4, 1200, 3), cand(5, 800, 4)}
+	first, err := SelectNext(in)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for i := 0; i < 50; i++ {
+		got, err := SelectNext(in)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if ids(got) != ids(first) {
+			t.Fatalf("run %d gave %v, first run gave %v", i, ids(got), ids(first))
+		}
+	}
+}
+
+func BenchmarkSelectNext12(b *testing.B) { benchmarkSelectNext(b, 12) }
+
 func benchmarkSelectNext(b *testing.B, n int) {
 	in := make([]Candidate, n)
 	for i := range in {
