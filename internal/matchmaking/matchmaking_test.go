@@ -184,6 +184,8 @@ func TestSelectNextIsDeterministic(t *testing.T) {
 }
 
 func BenchmarkSelectNext12(b *testing.B) { benchmarkSelectNext(b, 12) }
+func BenchmarkSelectNext30(b *testing.B) { benchmarkSelectNext(b, 30) }
+func BenchmarkSelectNext50(b *testing.B) { benchmarkSelectNext(b, 50) }
 
 func benchmarkSelectNext(b *testing.B, n int) {
 	in := make([]Candidate, n)
