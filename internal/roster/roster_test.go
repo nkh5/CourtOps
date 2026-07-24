@@ -173,6 +173,17 @@ func TestParseEmptyAndLimits(t *testing.T) {
 	})
 }
 
+func TestParseIgnoresBlankLines(t *testing.T) {
+	in := "Name,Email,Skill\n\nAna,ana@example.com,Intermediate\n,,\n"
+	res, err := Parse(strings.NewReader(in))
+	if err != nil {
+		t.Fatalf("Parse() error: %v", err)
+	}
+	if !res.OK() || len(res.Entries) != 1 {
+		t.Fatalf("entries=%d errors=%v", len(res.Entries), res.Errors)
+	}
+}
+
 func itoa(i int) string {
 	if i == 0 {
 		return "0"
