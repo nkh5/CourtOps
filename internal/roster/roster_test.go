@@ -1,6 +1,7 @@
 package roster
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -106,6 +107,68 @@ func TestParseDuplicates(t *testing.T) {
 		}
 		if !strings.Contains(res.Errors[0].Message, "row 2") {
 			t.Errorf("error should point at the first occurrence: %q", res.Errors[0].Message)
+		}
+	})
+}
+
+func TestParseHeaderProblems(t *testing.T) {
+	tests := []struct {
+		name, in, want string
+	}{
+		{"no identifier column", "Name,Skill\nAna,Intermediate\n", "email or club ID"},
+		{"no band column", "Name,Email\nAna,ana@example.com\n", "skill band"},
+		{"no name column", "Email,Skill\nana@example.com,Intermediate\n", "display name"},
+		{"ambiguous", "Name,Nickname,Email,Skill\nA,B,c@example.com,Advanced\n", "two columns"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse(strings.NewReader(tt.in))
+			if err == nil {
+				t.Fatal("expected a header error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("error = %q, want it to mention %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseEmptyAndLimits(t *testing.T) {
+	t.Run("empty file", func(t *testing.T) {
+		if _, err := Parse(strings.NewReader("   \n")); err == nil {
+			t.Fatal("expected an error for an empty file")
+		}
+	})
+
+	t.Run("header only", func(t *testing.T) {
+		res, err := Parse(strings.NewReader("Name,Email,Skill\n"))
+		if err != nil {
+			t.Fatalf("Parse() error: %v", err)
+		}
+		if res.OK() {
+			t.Fatal("a header with no players is not importable")
+		}
+	})
+
+	t.Run("too large", func(t *testing.T) {
+		big := "Name,Email,Skill\n" + strings.Repeat("x", MaxBytes)
+		_, err := Parse(strings.NewReader(big))
+		if !errors.Is(err, ErrTooLarge) {
+			t.Fatalf("error = %v, want ErrTooLarge", err)
+		}
+	})
+
+	t.Run("too many rows", func(t *testing.T) {
+		var b strings.Builder
+		b.WriteString("Name,Email,Skill\n")
+		for i := 0; i < MaxRows+5; i++ {
+			b.WriteString("Player,p")
+			b.WriteString(strings.Repeat("0", 1))
+			b.WriteString(itoa(i))
+			b.WriteString("@example.com,Intermediate\n")
+		}
+		if _, err := Parse(strings.NewReader(b.String())); !errors.Is(err, ErrTooManyRows) {
+			t.Fatalf("error = %v, want ErrTooManyRows", err)
 		}
 	})
 }
