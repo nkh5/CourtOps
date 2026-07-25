@@ -184,6 +184,20 @@ func TestParseIgnoresBlankLines(t *testing.T) {
 	}
 }
 
+func TestParseHandlesBOMAndQuotedFields(t *testing.T) {
+	in := "\ufeffName,Email,Skill\n\"Reyes, Ana\",ana@example.com,Intermediate\n"
+	res, err := Parse(strings.NewReader(in))
+	if err != nil {
+		t.Fatalf("Parse() error: %v", err)
+	}
+	if !res.OK() {
+		t.Fatalf("expected acceptance, got %v", res.Errors)
+	}
+	if res.Entries[0].DisplayName != "Reyes, Ana" {
+		t.Errorf("display name = %q", res.Entries[0].DisplayName)
+	}
+}
+
 func itoa(i int) string {
 	if i == 0 {
 		return "0"
@@ -194,4 +208,18 @@ func itoa(i int) string {
 		i /= 10
 	}
 	return string(out)
+}
+
+func TestParseUsesPhysicalFileLines(t *testing.T) {
+	in := "Name,Email,Skill\n\n\"Two\nLines\",first@example.com,Beginner\n\nMissing,,Advanced\nBad\"quote,b@example.com,Beginner\n"
+	res, err := Parse(strings.NewReader(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Entries) != 1 || res.Entries[0].Row != 3 {
+		t.Fatalf("entry lines: %+v", res.Entries)
+	}
+	if len(res.Errors) != 2 || res.Errors[0].Row != 6 || res.Errors[1].Row != 7 {
+		t.Fatalf("error lines: %+v", res.Errors)
+	}
 }
