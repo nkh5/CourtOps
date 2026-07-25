@@ -223,3 +223,26 @@ func TestParseUsesPhysicalFileLines(t *testing.T) {
 		t.Fatalf("error lines: %+v", res.Errors)
 	}
 }
+
+func TestParseLimitsDuplicateAndMalformedRows(t *testing.T) {
+	for _, row := range []string{"Ana,a@example.com,Beginner\n", "Bad\"quote,b@example.com,Beginner\n"} {
+		_, err := Parse(strings.NewReader("Name,Email,Skill\n" + strings.Repeat(row, MaxRows+1)))
+		if !errors.Is(err, ErrTooManyRows) {
+			t.Errorf("row %q: error=%v, want row limit", row, err)
+		}
+	}
+	res, err := Parse(strings.NewReader("Name,Email,Skill\n" + strings.Repeat("Ana,a@example.com,Beginner\n", MaxRows)))
+	if err != nil || !res.OK() || res.Duplicates != MaxRows-1 {
+		t.Fatalf("exactly 100 rows: %+v, %v", res, err)
+	}
+}
+
+func TestParseRejectsAmbiguousSkillBands(t *testing.T) {
+	res, err := Parse(strings.NewReader("Name,Email,Skill\nAna,a@example.com,Beginner / Advanced\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.OK() || len(res.Errors) != 1 {
+		t.Fatal("ambiguous band was accepted")
+	}
+}
