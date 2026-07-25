@@ -24,3 +24,22 @@ func TestParseFiveQuestionForm(t *testing.T) {
 		t.Errorf("optional answers: %+v", third)
 	}
 }
+
+func TestParseOptionalRegistrationValidation(t *testing.T) {
+	header := "Display name,Email or club ID,Skill band,Estimated arrival time,Need a paddle?\n"
+	for _, rows := range []string{
+		"Ana,a,Advanced,6 PM,Maybe\n",
+		"Ana,a,Advanced," + strings.Repeat("x", 121) + ",Yes\n",
+		"Ana,a,Advanced,6 PM,Yes\nAna,a,Advanced,6 PM,No\n",
+		"Ana,a,Advanced,6 PM,Yes\nAna,a,Advanced,7 PM,Yes\n",
+	} {
+		result, err := Parse(strings.NewReader(header + rows))
+		if err != nil || result.OK() || len(result.Errors) != 1 {
+			t.Errorf("expected one invalid registration for %q: %v / %+v", rows, err, result)
+		}
+	}
+	_, err := Parse(strings.NewReader("Name,Email,Skill,Arrival,Estimated arrival time\nAna,a,Advanced,6 PM,7 PM\n"))
+	if err == nil || !strings.Contains(err.Error(), "two columns") {
+		t.Fatalf("ambiguous arrival header: %v", err)
+	}
+}
