@@ -39,3 +39,32 @@ func TestEventSurvivesReconnect(t *testing.T) {
 		t.Errorf("courts after restart = %d, want 2", len(snap.Courts))
 	}
 }
+
+func TestForeignKeyRejectsUnknownPlayer(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"})
+
+	_, err := st.Pool().Exec(ctx,
+		`INSERT INTO event_players (event_id, player_id) VALUES ($1, $2)`, event.ID, 999999)
+	if err == nil {
+		t.Fatal("expected the foreign key to reject a player that does not exist")
+	}
+}
+
+func TestDuplicateEventMembershipIsRejected(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(4, 1000)...)
+
+	var playerID int64
+	if err := st.Pool().QueryRow(ctx,
+		`SELECT player_id FROM event_players WHERE event_id = $1 LIMIT 1`, event.ID).Scan(&playerID); err != nil {
+		t.Fatalf("read a membership: %v", err)
+	}
+
+	if _, err := st.Pool().Exec(ctx,
+		`INSERT INTO event_players (event_id, player_id) VALUES ($1, $2)`, event.ID, playerID); err == nil {
+		t.Fatal("expected the primary key to reject a duplicate membership")
+	}
+}
