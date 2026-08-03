@@ -222,3 +222,55 @@ func TestSetPlayerState(t *testing.T) {
 		mustKind(t, err, store.KindPrecondition)
 	})
 }
+
+func TestAssignNextRequiresFourReadyPlayers(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(3, 1000)...)
+	checkInAll(t, st, event.ID)
+
+	_, _, err := st.AssignNext(ctx, event.ID, courtIDs(t, st, event.ID)[0])
+	mustKind(t, err, store.KindPrecondition)
+
+	if n := countActiveMatches(t, st, event.ID); n != 0 {
+		t.Errorf("active matches = %d, want 0", n)
+	}
+}
+
+func TestAssignNextTakesTheLongestWaiting(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(6, 1000)...)
+
+	// Check people in one at a time so the wait order is unambiguous.
+	snap := snapshot(t, st, event.ID)
+	var order []store.EventPlayer
+	for _, p := range snap.Roster {
+		got, err := st.SetPlayerState(ctx, event.ID, p.PlayerID, store.StateReady, "")
+		if err != nil {
+			t.Fatalf("check in %s: %v", p.DisplayName, err)
+		}
+		order = append(order, got)
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	match, created, err := st.AssignNext(ctx, event.ID, courtIDs(t, st, event.ID)[0])
+	if err != nil || !created {
+		t.Fatalf("assign: created=%v err=%v", created, err)
+	}
+
+	onCourt := map[int64]bool{}
+	for _, p := range match.Players {
+		onCourt[p.PlayerID] = true
+	}
+	for i, p := range order[:4] {
+		if !onCourt[p.PlayerID] {
+			t.Errorf("player %d in the queue (%s) was skipped", i+1, p.DisplayName)
+		}
+	}
+	for _, p := range order[4:] {
+		if onCourt[p.PlayerID] {
+			t.Errorf("%s played before everyone ahead of them", p.DisplayName)
+		}
+	}
+}
