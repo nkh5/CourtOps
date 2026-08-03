@@ -274,3 +274,82 @@ func TestAssignNextTakesTheLongestWaiting(t *testing.T) {
 		}
 	}
 }
+
+func TestCompleteMatchReturnsPlayersToTheQueue(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(4, 1000)...)
+	checkInAll(t, st, event.ID)
+	court := courtIDs(t, st, event.ID)[0]
+
+	match, _, err := st.AssignNext(ctx, event.ID, court)
+	if err != nil {
+		t.Fatalf("assign: %v", err)
+	}
+
+	done, changed, err := st.CompleteMatch(ctx, event.ID, match.ID, 1)
+	if err != nil || !changed {
+		t.Fatalf("complete: changed=%v err=%v", changed, err)
+	}
+	if done.State != store.MatchCompleted || done.WinningTeam == nil || *done.WinningTeam != 1 {
+		t.Fatalf("completed match = %+v", done)
+	}
+
+	snap := snapshot(t, st, event.ID)
+	if len(snap.Queue) != 4 {
+		t.Errorf("queue after the match = %d players, want all 4 back", len(snap.Queue))
+	}
+	if n := countActiveMatches(t, st, event.ID); n != 0 {
+		t.Errorf("active matches = %d, want 0", n)
+	}
+
+	var active int
+	if err := st.Pool().QueryRow(ctx,
+		`SELECT count(*) FROM match_players WHERE active`).Scan(&active); err != nil {
+		t.Fatalf("count active memberships: %v", err)
+	}
+	if active != 0 {
+		t.Errorf("active match memberships = %d, want 0 once the match is over", active)
+	}
+}
+
+func TestCancelMatchReleasesEveryone(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(4, 1000)...)
+	checkInAll(t, st, event.ID)
+	court := courtIDs(t, st, event.ID)[0]
+
+	match, _, err := st.AssignNext(ctx, event.ID, court)
+	if err != nil {
+		t.Fatalf("assign: %v", err)
+	}
+
+	if _, changed, err := st.CancelMatch(ctx, event.ID, match.ID); err != nil || !changed {
+		t.Fatalf("cancel: changed=%v err=%v", changed, err)
+	}
+	if snap := snapshot(t, st, event.ID); len(snap.Queue) != 4 {
+		t.Errorf("queue after cancelling = %d, want 4", len(snap.Queue))
+	}
+
+	t.Run("cancelling twice is harmless", func(t *testing.T) {
+		_, changed, err := st.CancelMatch(ctx, event.ID, match.ID)
+		if err != nil {
+			t.Fatalf("second cancel: %v", err)
+		}
+		if changed {
+			t.Error("the second cancel reported a change")
+		}
+	})
+
+	t.Run("a cancelled match cannot be given a result", func(t *testing.T) {
+		_, _, err := st.CompleteMatch(ctx, event.ID, match.ID, 1)
+		mustKind(t, err, store.KindConflict)
+	})
+
+	t.Run("the court can be used again", func(t *testing.T) {
+		if _, created, err := st.AssignNext(ctx, event.ID, court); err != nil || !created {
+			t.Fatalf("reassign after cancel: created=%v err=%v", created, err)
+		}
+	})
+}
