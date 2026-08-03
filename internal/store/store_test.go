@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nicholashu/courtops/internal/roster"
 	"github.com/nicholashu/courtops/internal/store"
 )
 
@@ -144,6 +145,80 @@ func TestImportRoster(t *testing.T) {
 			t.Fatalf("start event: %v", err)
 		}
 		_, err := st.ImportRoster(ctx, event.ID, entries(1, 1000))
+		mustKind(t, err, store.KindPrecondition)
+	})
+}
+
+func TestImportRollsBackCompletely(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+
+	event, err := st.CreateEvent(ctx, "Rollback test", time.Now(), []string{"Court 1"})
+	if err != nil {
+		t.Fatalf("create event: %v", err)
+	}
+
+	// The second and third rows are fine; the fourth carries a seed the CHECK
+	// constraint rejects. Nothing at all should be written.
+	bad := entries(3, 1000)
+	bad = append(bad, roster.Entry{Row: 5, DisplayName: "Impossible", PrivateRef: "x@example.com", Band: "advanced", Seed: 99999})
+
+	if _, err := st.ImportRoster(ctx, event.ID, bad); err == nil {
+		t.Fatal("expected the import to fail")
+	}
+	if n := countRows(t, st, "players"); n != 0 {
+		t.Errorf("players = %d after a failed import, want 0", n)
+	}
+	if n := countRows(t, st, "event_players"); n != 0 {
+		t.Errorf("memberships = %d after a failed import, want 0", n)
+	}
+}
+
+func TestSetPlayerState(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(4, 1000)...)
+
+	snap := snapshot(t, st, event.ID)
+	player := snap.Roster[0]
+
+	ready, err := st.SetPlayerState(ctx, event.ID, player.PlayerID, store.StateReady, "")
+	if err != nil {
+		t.Fatalf("check in: %v", err)
+	}
+	if ready.State != store.StateReady || ready.ReadySince == nil {
+		t.Fatalf("after check-in = %+v, want ready with a wait time", ready)
+	}
+
+	t.Run("repeating check-in keeps the original place in the queue", func(t *testing.T) {
+		again, err := st.SetPlayerState(ctx, event.ID, player.PlayerID, store.StateReady, store.StateReady)
+		if err != nil {
+			t.Fatalf("repeat check in: %v", err)
+		}
+		if !again.ReadySince.Equal(*ready.ReadySince) {
+			t.Errorf("ready_since moved from %v to %v on a repeated command", *ready.ReadySince, *again.ReadySince)
+		}
+	})
+
+	t.Run("a stale expected state is refused", func(t *testing.T) {
+		// The organizer's page still said "resting", but the player is ready.
+		_, err := st.SetPlayerState(ctx, event.ID, player.PlayerID, store.StateLeft, store.StateResting)
+		mustKind(t, err, store.KindConflict)
+
+		current := snapshot(t, st, event.ID)
+		for _, p := range current.Roster {
+			if p.PlayerID == player.PlayerID && p.State != store.StateReady {
+				t.Errorf("state = %s after a refused write, want it unchanged", p.State)
+			}
+		}
+	})
+
+	t.Run("a player on court cannot be edited directly", func(t *testing.T) {
+		checkInAll(t, st, event.ID)
+		if _, _, err := st.AssignNext(ctx, event.ID, courtIDs(t, st, event.ID)[0]); err != nil {
+			t.Fatalf("assign: %v", err)
+		}
+		_, err := st.SetPlayerState(ctx, event.ID, player.PlayerID, store.StateLeft, "")
 		mustKind(t, err, store.KindPrecondition)
 	})
 }
