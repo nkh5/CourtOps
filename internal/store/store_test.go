@@ -353,3 +353,38 @@ func TestCancelMatchReleasesEveryone(t *testing.T) {
 		}
 	})
 }
+
+func TestFinishingAnEventRequiresEmptyCourts(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(4, 1000)...)
+	checkInAll(t, st, event.ID)
+
+	match, _, err := st.AssignNext(ctx, event.ID, courtIDs(t, st, event.ID)[0])
+	if err != nil {
+		t.Fatalf("assign: %v", err)
+	}
+
+	_, err = st.SetEventState(ctx, event.ID, store.EventFinished)
+	mustKind(t, err, store.KindPrecondition)
+
+	if _, _, err := st.CompleteMatch(ctx, event.ID, match.ID, 2); err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+	if _, err := st.SetEventState(ctx, event.ID, store.EventFinished); err != nil {
+		t.Fatalf("finish after the court cleared: %v", err)
+	}
+}
+
+func TestCourtFromAnotherEventIsRejected(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+
+	a := liveEvent(t, st, []string{"Court 1"}, entries(4, 1000)...)
+	b := liveEvent(t, st, []string{"Court 1"})
+	checkInAll(t, st, a.ID)
+
+	otherCourt := courtIDs(t, st, b.ID)[0]
+	_, _, err := st.AssignNext(ctx, a.ID, otherCourt)
+	mustKind(t, err, store.KindNotFound)
+}
