@@ -2,7 +2,7 @@ package store_test
 
 import (
 	"context"
-
+	"math"
 	"testing"
 
 	"github.com/nicholashu/courtops/internal/store"
@@ -70,4 +70,76 @@ func TestRetriesDoNotDuplicateWork(t *testing.T) {
 			t.Errorf("winning team = %d after a refused edit, want the saved 2", *match.WinningTeam)
 		}
 	})
+}
+
+func TestRatingsAreAppliedWithTheResult(t *testing.T) {
+	st := newTestStore(t)
+	st.RatingsEnabled = true
+	ctx := context.Background()
+
+	// Two 1200s and two 800s: the matcher splits them 1200+800 against
+	// 1200+800, so both team means are 1000 and a win is worth 16 points.
+	people := entries(4, 1000)
+	people[0].Seed, people[1].Seed = 1200, 1200
+	people[2].Seed, people[3].Seed = 800, 800
+
+	event := liveEvent(t, st, []string{"Court 1"}, people...)
+	checkInAll(t, st, event.ID)
+
+	match, _, err := st.AssignNext(ctx, event.ID, courtIDs(t, st, event.ID)[0])
+	if err != nil {
+		t.Fatalf("assign: %v", err)
+	}
+
+	done, _, err := st.CompleteMatch(ctx, event.ID, match.ID, 1)
+	if err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+
+	var total float64
+	for _, p := range done.Players {
+		if p.RatingBefore == nil || p.RatingAfter == nil {
+			t.Fatalf("%s has no rating history recorded", p.DisplayName)
+		}
+		delta := *p.RatingAfter - *p.RatingBefore
+		want := 16.0
+		if p.Team == 2 {
+			want = -16.0
+		}
+		if math.Abs(delta-want) > 1e-9 {
+			t.Errorf("%s (team %d) moved %v, want %v", p.DisplayName, p.Team, delta, want)
+		}
+		total += delta
+	}
+	if math.Abs(total) > 1e-9 {
+		t.Errorf("the four ratings moved by %v in total, want 0", total)
+	}
+
+	for _, e := range people {
+		_, games := ratingOf(t, st, e.PrivateRef)
+		if games != 1 {
+			t.Errorf("%s has %d rated games, want 1", e.DisplayName, games)
+		}
+	}
+}
+
+func TestRatingsCanBeTurnedOff(t *testing.T) {
+	st := newTestStore(t)
+	st.RatingsEnabled = false
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(4, 1000)...)
+	checkInAll(t, st, event.ID)
+
+	match, _, err := st.AssignNext(ctx, event.ID, courtIDs(t, st, event.ID)[0])
+	if err != nil {
+		t.Fatalf("assign: %v", err)
+	}
+	if _, _, err := st.CompleteMatch(ctx, event.ID, match.ID, 1); err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+
+	rating, games := ratingOf(t, st, "player01@example.com")
+	if games != 0 || rating != 1000 {
+		t.Errorf("rating = %v over %d games, want the seed 1000 and 0 games while ratings are off", rating, games)
+	}
 }
