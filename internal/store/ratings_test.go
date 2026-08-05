@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/nicholashu/courtops/internal/roster"
 	"github.com/nicholashu/courtops/internal/store"
@@ -191,6 +192,70 @@ func TestALaterImportKeepsEarnedRatings(t *testing.T) {
 		}
 		if games != 1 {
 			t.Errorf("%s: rated games = %d, want 1", ref, games)
+		}
+	}
+}
+
+func TestNewImportSeedsOnlyUnratedPlayers(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+
+	event, err := st.CreateEvent(ctx, "Seeding", time.Now(), []string{"Court 1"})
+	if err != nil {
+		t.Fatalf("create event: %v", err)
+	}
+
+	people := entries(1, 800)
+	if _, err := st.ImportRoster(ctx, event.ID, people); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	if r, _ := ratingOf(t, st, people[0].PrivateRef); r != 800 {
+		t.Fatalf("rating = %v, want the 800 seed", r)
+	}
+
+	// Still unrated, so a corrected self-report is allowed to re-seed them.
+	people[0].Band, people[0].Seed = "advanced", 1200
+	other, err := st.CreateEvent(ctx, "Corrected", time.Now(), []string{"Court 1"})
+	if err != nil {
+		t.Fatalf("create event: %v", err)
+	}
+	if _, err := st.ImportRoster(ctx, other.ID, people); err != nil {
+		t.Fatalf("reimport: %v", err)
+	}
+	if r, _ := ratingOf(t, st, people[0].PrivateRef); r != 1200 {
+		t.Errorf("rating = %v, want the corrected 1200 seed for an unrated player", r)
+	}
+}
+
+func TestNewMatchesUseTheLatestRatings(t *testing.T) {
+	st := newTestStore(t)
+	st.RatingsEnabled = true
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(4, 1000)...)
+	checkInAll(t, st, event.ID)
+	court := courtIDs(t, st, event.ID)[0]
+
+	first, _, err := st.AssignNext(ctx, event.ID, court)
+	if err != nil {
+		t.Fatalf("assign: %v", err)
+	}
+	if _, _, err := st.CompleteMatch(ctx, event.ID, first.ID, 1); err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+
+	second, _, err := st.AssignNext(ctx, event.ID, court)
+	if err != nil {
+		t.Fatalf("second assign: %v", err)
+	}
+
+	// Every rating_before on the new match must equal the player's committed
+	// rating, which has already moved by the first result.
+	for _, p := range second.Players {
+		if p.RatingBefore == nil {
+			t.Fatalf("%s has no rating recorded on the new match", p.DisplayName)
+		}
+		if math.Abs(*p.RatingBefore-1000) < 1e-9 {
+			t.Errorf("%s started the second match at 1000; the first result was not applied first", p.DisplayName)
 		}
 	}
 }
