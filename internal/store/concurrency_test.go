@@ -72,3 +72,85 @@ func TestConcurrentAssignmentsOnOneCourtCreateOneMatch(t *testing.T) {
 		t.Errorf("queue = %d, want the other 4 players still waiting", len(snap.Queue))
 	}
 }
+
+func TestConcurrentAssignmentsOnTwoCourtsShareTheQueue(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1", "Court 2"}, entries(8, 1000)...)
+	checkInAll(t, st, event.ID)
+	courts := courtIDs(t, st, event.ID)
+
+	var wg sync.WaitGroup
+	matches := make([]store.Match, len(courts))
+	errs := make([]error, len(courts))
+	wg.Add(len(courts))
+	for i, court := range courts {
+		go func(i int, court int64) {
+			defer wg.Done()
+			matches[i], _, errs[i] = st.AssignNext(ctx, event.ID, court)
+		}(i, court)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("court %d: %v", i, err)
+		}
+	}
+
+	// Eight ready players, two courts: both matches happen and nobody is on
+	// both of them.
+	seen := map[int64]bool{}
+	for _, m := range matches {
+		for _, p := range m.Players {
+			if seen[p.PlayerID] {
+				t.Errorf("player %d (%s) was put on two courts at once", p.PlayerID, p.DisplayName)
+			}
+			seen[p.PlayerID] = true
+		}
+	}
+	if len(seen) != 8 {
+		t.Errorf("distinct players on court = %d, want 8", len(seen))
+	}
+	if n := countActiveMatches(t, st, event.ID); n != 2 {
+		t.Errorf("active matches = %d, want 2", n)
+	}
+}
+
+func TestTwoCourtsCannotShareTooFewPlayers(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1", "Court 2"}, entries(4, 1000)...)
+	checkInAll(t, st, event.ID)
+	courts := courtIDs(t, st, event.ID)
+
+	var wg sync.WaitGroup
+	created := make([]bool, len(courts))
+	errs := make([]error, len(courts))
+	wg.Add(len(courts))
+	for i, court := range courts {
+		go func(i int, court int64) {
+			defer wg.Done()
+			_, created[i], errs[i] = st.AssignNext(ctx, event.ID, court)
+		}(i, court)
+	}
+	wg.Wait()
+
+	successes, refusals := 0, 0
+	for i := range courts {
+		switch {
+		case errs[i] == nil && created[i]:
+			successes++
+		case store.KindOf(errs[i]) == store.KindPrecondition:
+			refusals++
+		default:
+			t.Fatalf("court %d: unexpected outcome created=%v err=%v", i, created[i], errs[i])
+		}
+	}
+	if successes != 1 || refusals != 1 {
+		t.Errorf("got %d matches and %d refusals, want exactly one of each", successes, refusals)
+	}
+	if n := countActiveMatches(t, st, event.ID); n != 1 {
+		t.Errorf("active matches = %d, want 1", n)
+	}
+}
