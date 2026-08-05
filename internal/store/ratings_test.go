@@ -5,6 +5,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/nicholashu/courtops/internal/roster"
 	"github.com/nicholashu/courtops/internal/store"
 )
 
@@ -141,5 +142,55 @@ func TestRatingsCanBeTurnedOff(t *testing.T) {
 	rating, games := ratingOf(t, st, "player01@example.com")
 	if games != 0 || rating != 1000 {
 		t.Errorf("rating = %v over %d games, want the seed 1000 and 0 games while ratings are off", rating, games)
+	}
+}
+
+func TestALaterImportKeepsEarnedRatings(t *testing.T) {
+	st := newTestStore(t)
+	st.RatingsEnabled = true
+	ctx := context.Background()
+
+	people := entries(4, 1000)
+	first := liveEvent(t, st, []string{"Court 1"}, people...)
+	checkInAll(t, st, first.ID)
+
+	match, _, err := st.AssignNext(ctx, first.ID, courtIDs(t, st, first.ID)[0])
+	if err != nil {
+		t.Fatalf("assign: %v", err)
+	}
+	if _, _, err := st.CompleteMatch(ctx, first.ID, match.ID, 1); err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+
+	earned := map[string]float64{}
+	for _, e := range people {
+		r, _ := ratingOf(t, st, e.PrivateRef)
+		earned[e.PrivateRef] = r
+	}
+
+	// The same people fill in the form again for next week and pick a different
+	// band. A self-report must not overwrite what they actually played to.
+	next, err := st.CreateEvent(ctx, "Next week", first.Date.AddDate(0, 0, 7), []string{"Court 1"})
+	if err != nil {
+		t.Fatalf("create event: %v", err)
+	}
+	reported := make([]roster.Entry, len(people))
+	copy(reported, people)
+	for i := range reported {
+		reported[i].Band = "advanced"
+		reported[i].Seed = 1200
+	}
+	if _, err := st.ImportRoster(ctx, next.ID, reported); err != nil {
+		t.Fatalf("reimport: %v", err)
+	}
+
+	for ref, want := range earned {
+		got, games := ratingOf(t, st, ref)
+		if math.Abs(got-want) > 1e-9 {
+			t.Errorf("%s: rating became %v after reimport, want the earned %v", ref, got, want)
+		}
+		if games != 1 {
+			t.Errorf("%s: rated games = %d, want 1", ref, games)
+		}
 	}
 }
