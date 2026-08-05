@@ -154,3 +154,103 @@ func TestTwoCourtsCannotShareTooFewPlayers(t *testing.T) {
 		t.Errorf("active matches = %d, want 1", n)
 	}
 }
+
+// TestFailedAssignmentLeavesNothingBehind forces a failure after the match row
+// has been inserted but before the transaction commits.
+//
+// The setup is realistic rather than contrived: the same person is on two
+// events' rosters and is already playing in the first one. The per-player
+// partial unique index rejects the second live membership, and the whole
+// assignment must disappear.
+func TestFailedAssignmentLeavesNothingBehind(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+
+	people := entries(8, 1000)
+	eventA := liveEvent(t, st, []string{"Court A"}, people[:4]...)
+	eventB := liveEvent(t, st, []string{"Court B"}, people...)
+
+	// Everyone is ready in B, and the first four are also ready in A.
+	checkInAll(t, st, eventB.ID)
+	checkInAll(t, st, eventA.ID)
+
+	if _, created, err := st.AssignNext(ctx, eventA.ID, courtIDs(t, st, eventA.ID)[0]); err != nil || !created {
+		t.Fatalf("assign in event A: created=%v err=%v", created, err)
+	}
+
+	matchesBefore := countRows(t, st, "matches")
+	membershipsBefore := countRows(t, st, "match_players")
+
+	// In event B those same four players are still marked ready, so they are the
+	// longest waiting and the matcher will pick them. The database refuses.
+	_, _, err := st.AssignNext(ctx, eventB.ID, courtIDs(t, st, eventB.ID)[0])
+	mustKind(t, err, store.KindConflict)
+
+	if n := countRows(t, st, "matches"); n != matchesBefore {
+		t.Errorf("matches = %d after the failed assignment, want %d: a half-created match was left behind", n, matchesBefore)
+	}
+	if n := countRows(t, st, "match_players"); n != membershipsBefore {
+		t.Errorf("match memberships = %d, want %d", n, membershipsBefore)
+	}
+	if n := countActiveMatches(t, st, eventB.ID); n != 0 {
+		t.Errorf("event B has %d active matches, want 0", n)
+	}
+
+	// Nobody in event B was left marked as playing by the rolled-back attempt.
+	snapB := snapshot(t, st, eventB.ID)
+	if len(snapB.Queue) != 8 {
+		t.Errorf("event B queue = %d, want all 8 still ready", len(snapB.Queue))
+	}
+}
+
+func TestConcurrentCompletionsRecordOneResult(t *testing.T) {
+	st := newTestStore(t)
+	st.RatingsEnabled = true
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(4, 1000)...)
+	checkInAll(t, st, event.ID)
+
+	match, _, err := st.AssignNext(ctx, event.ID, courtIDs(t, st, event.ID)[0])
+	if err != nil {
+		t.Fatalf("assign: %v", err)
+	}
+
+	const attempts = 6
+	changes := make([]bool, attempts)
+	errs := make([]error, attempts)
+
+	var start, done sync.WaitGroup
+	start.Add(1)
+	done.Add(attempts)
+	for i := 0; i < attempts; i++ {
+		go func(i int) {
+			defer done.Done()
+			start.Wait()
+			_, changes[i], errs[i] = st.CompleteMatch(ctx, event.ID, match.ID, 1)
+		}(i)
+	}
+	start.Done()
+	done.Wait()
+
+	changed := 0
+	for i := range changes {
+		if errs[i] != nil {
+			t.Fatalf("attempt %d: %v", i, errs[i])
+		}
+		if changes[i] {
+			changed++
+		}
+	}
+	if changed != 1 {
+		t.Errorf("changed = %d, want exactly one of %d identical submissions to write", changed, attempts)
+	}
+
+	// The rating must have moved exactly once, not six times.
+	rating, games := ratingOf(t, st, "player01@example.com")
+	if games != 1 {
+		t.Errorf("rated games = %d, want 1", games)
+	}
+	if rating != 1016 && rating != 984 {
+		t.Errorf("rating = %v, want one single 16-point move from 1000", rating)
+	}
+}
