@@ -3,9 +3,10 @@ package store_test
 import (
 	"context"
 	"reflect"
-
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/nicholashu/courtops/internal/roster"
 	"github.com/nicholashu/courtops/internal/store"
@@ -143,5 +144,95 @@ func TestConcurrentAddPlayerCreatesOneMembership(t *testing.T) {
 	}
 	if created != 1 || len(snapshot(t, st, event.ID).Roster) != 1 || countRows(t, st, "players") != 1 {
 		t.Fatalf("concurrent duplicate additions: %d successful", created)
+	}
+}
+
+func TestAddPlayerQueueTimeStartsAfterWaitingForEventLock(t *testing.T) {
+	st := newTestStore(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	event := liveEvent(t, st, []string{"Court 1"}, entries(1, 1000)...)
+	waiter := snapshot(t, st, event.ID).Roster[0]
+	tx, err := st.Pool().Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	if _, err := tx.Exec(ctx, `SELECT id FROM events WHERE id = $1 FOR UPDATE`, event.ID); err != nil {
+		t.Fatal(err)
+	}
+	entry := arrival(t, "late@example.com")
+	result := make(chan error, 1)
+	go func() {
+		_, err := st.AddPlayer(ctx, event.ID, entry, true)
+		result <- err
+	}()
+	// Wait until the arriving player's transaction is actually waiting on our
+	// event lock, then check the existing player in before releasing it.
+	for {
+		var blocked int
+		if err := st.Pool().QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity
+			WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'`).Scan(&blocked); err != nil {
+			t.Fatal(err)
+		}
+		if blocked > 0 {
+			break
+		}
+		select {
+		case err := <-result:
+			t.Fatalf("addition finished while event was locked: %v", err)
+		case <-ctx.Done():
+			t.Fatal("arrival did not reach the event lock")
+		case <-time.After(time.Millisecond):
+		}
+	}
+	if _, err := tx.Exec(ctx, `UPDATE event_players SET state = 'ready', ready_since = clock_timestamp()
+		WHERE event_id = $1 AND player_id = $2`, event.ID, waiter.PlayerID); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-result; err != nil {
+		t.Fatal(err)
+	}
+	queue := snapshot(t, st, event.ID).Queue
+	if len(queue) != 2 || queue[0].PlayerID != waiter.PlayerID || !queue[1].ReadySince.After(*queue[0].ReadySince) {
+		t.Fatalf("arrival used a timestamp from before waiting for the lock: %+v", queue)
+	}
+}
+
+func TestImportRegistrationAnswers(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event, err := st.CreateEvent(ctx, "Form registrations", time.Now(), []string{"Court 1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := roster.Parse(strings.NewReader("Display name,Email or club ID,Skill band,Estimated arrival time,Need a paddle?\nAna,a,Beginner,6 PM,Yes\nBen,b,Advanced,,\n"))
+	if err != nil || !parsed.OK() {
+		t.Fatalf("parse: %v / %+v", err, parsed)
+	}
+	if _, err = st.ImportRoster(ctx, event.ID, parsed.Entries); err != nil {
+		t.Fatal(err)
+	}
+	players := snapshot(t, st, event.ID).Roster
+	details, err := st.RegistrationDetails(ctx, event.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a := details[players[0].PlayerID]; a.EstimatedArrival != "6 PM" || a.NeedsPaddle == nil || !*a.NeedsPaddle {
+		t.Errorf("missing imported answers: %+v", a)
+	}
+	if b := details[players[1].PlayerID]; b.EstimatedArrival != "" || b.NeedsPaddle != nil {
+		t.Errorf("unanswered questions changed: %+v", b)
+	}
+	parsed.Entries[0].EstimatedArrival = "7 PM"
+	if _, err = st.ImportRoster(ctx, event.ID, parsed.Entries); err != nil {
+		t.Fatal(err)
+	}
+	details, err = st.RegistrationDetails(ctx, event.ID)
+	if err != nil || details[players[0].PlayerID].EstimatedArrival != "7 PM" {
+		t.Fatalf("reimport did not refresh event registration: %+v / %v", details, err)
 	}
 }
