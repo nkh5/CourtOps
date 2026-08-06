@@ -53,3 +53,65 @@ func TestAddPlayerDuringLiveMatch(t *testing.T) {
 		t.Fatalf("duplicate created an identity: %d", n)
 	}
 }
+
+func TestAddPlayerPreservesSharedIdentityAndEventSpecificDetails(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	a := liveEvent(t, st, []string{"Court 1"})
+	b := liveEvent(t, st, []string{"Court 1"})
+	entry := arrival(t, "returning@example.com")
+	first, err := st.AddPlayer(ctx, a.ID, entry, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.State != store.StateResting || first.ReadySince != nil || first.CheckedInAt != nil {
+		t.Fatalf("unchecked arrival should only be registered: %+v", first)
+	}
+	if _, err := st.Pool().Exec(ctx, `UPDATE players SET rating = 1375, rated_games = 12 WHERE id = $1`, first.PlayerID); err != nil {
+		t.Fatal(err)
+	}
+	entry.DisplayName = "An accidental rename"
+	entry.Band = "advanced"
+	entry.EstimatedArrival = "8 PM"
+	no := false
+	entry.NeedsPaddle = &no
+	second, err := st.AddPlayer(ctx, b.ID, entry, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.PlayerID != first.PlayerID || second.DisplayName != first.DisplayName || second.Rating != 1375 || second.RatedGames != 12 {
+		t.Fatalf("returning identity or earned rating changed: %+v", second)
+	}
+	for _, check := range []struct {
+		id      int64
+		arrival string
+		paddle  bool
+	}{{a.ID, "7:15 PM", true}, {b.ID, "8 PM", false}} {
+		registrations, err := st.RegistrationDetails(ctx, check.id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		registration := registrations[first.PlayerID]
+		if registration.EstimatedArrival != check.arrival || registration.NeedsPaddle == nil || *registration.NeedsPaddle != check.paddle {
+			t.Errorf("wrong event registration for %d: %+v", check.id, registration)
+		}
+	}
+}
+
+func TestAddPlayerRejectsFinishedAndInvalidWithoutCreatingIdentity(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1"})
+	bad := arrival(t, "bad@example.com")
+	bad.Band = "unknown"
+	_, err := st.AddPlayer(ctx, event.ID, bad, true)
+	mustKind(t, err, store.KindInvalid)
+	if _, err := st.SetEventState(ctx, event.ID, store.EventFinished); err != nil {
+		t.Fatal(err)
+	}
+	_, err = st.AddPlayer(ctx, event.ID, arrival(t, "late@example.com"), true)
+	mustKind(t, err, store.KindPrecondition)
+	if n := countRows(t, st, "players"); n != 0 {
+		t.Fatalf("refused registration left identities: %d", n)
+	}
+}
