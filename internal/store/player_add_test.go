@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 
+	"sync"
 	"testing"
 
 	"github.com/nicholashu/courtops/internal/roster"
@@ -113,5 +114,34 @@ func TestAddPlayerRejectsFinishedAndInvalidWithoutCreatingIdentity(t *testing.T)
 	mustKind(t, err, store.KindPrecondition)
 	if n := countRows(t, st, "players"); n != 0 {
 		t.Fatalf("refused registration left identities: %d", n)
+	}
+}
+
+func TestConcurrentAddPlayerCreatesOneMembership(t *testing.T) {
+	st := newTestStore(t)
+	event := liveEvent(t, st, []string{"Court 1"})
+	entry := arrival(t, "late@example.com")
+	var wg sync.WaitGroup
+	errors := make(chan error, 8)
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := st.AddPlayer(context.Background(), event.ID, entry, true)
+			errors <- err
+		}()
+	}
+	wg.Wait()
+	close(errors)
+	created := 0
+	for err := range errors {
+		if err == nil {
+			created++
+		} else {
+			mustKind(t, err, store.KindConflict)
+		}
+	}
+	if created != 1 || len(snapshot(t, st, event.ID).Roster) != 1 || countRows(t, st, "players") != 1 {
+		t.Fatalf("concurrent duplicate additions: %d successful", created)
 	}
 }
