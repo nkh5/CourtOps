@@ -3,8 +3,9 @@ package store_test
 import (
 	"context"
 	"fmt"
-
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/nicholashu/courtops/internal/store"
 )
@@ -96,4 +97,98 @@ func TestLiveEventCannotReturnToSetup(t *testing.T) {
 	event := liveEvent(t, st, []string{"Court 1"})
 	_, err := st.SetEventState(context.Background(), event.ID, store.EventSetup)
 	mustKind(t, err, store.KindConflict)
+}
+
+func TestAddCourtUsesCreationLimitsUnderConcurrency(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	event := liveEvent(t, st, []string{"Court 1", "Court 2", "Court 3", "Court 4", "Court 5", "Court 6", "Court 7"})
+	_, err := st.AddCourt(ctx, event.ID, " court 1 ")
+	mustKind(t, err, store.KindInvalid)
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i := range errs {
+		wg.Add(1)
+		go func(i int) { defer wg.Done(); _, errs[i] = st.AddCourt(ctx, event.ID, fmt.Sprintf("Extra %d", i)) }(i)
+	}
+	wg.Wait()
+	successes := 0
+	for _, err := range errs {
+		if err == nil {
+			successes++
+		} else {
+			mustKind(t, err, store.KindInvalid)
+		}
+	}
+	if successes != 1 || len(snapshot(t, st, event.ID).Courts) != 8 {
+		t.Fatal("concurrent additions bypassed the eight-court limit")
+	}
+}
+
+// Pause the board at its courts query, commit a whole assignment, then let it
+// finish. The response must describe either side of that commit consistently.
+func TestSnapshotDoesNotMixConcurrentAssignmentStates(t *testing.T) {
+	st := newTestStore(t)
+	event := liveEvent(t, st, []string{"Court 1"}, entries(4, 1000)...)
+	checkInAll(t, st, event.ID)
+	courtID := courtIDs(t, st, event.ID)[0]
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	blocker, err := st.Pool().Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer blocker.Rollback(context.Background())
+	if _, err = blocker.Exec(ctx, `LOCK TABLE courts IN ACCESS EXCLUSIVE MODE`); err != nil {
+		t.Fatal(err)
+	}
+	type result struct {
+		snap store.Snapshot
+		err  error
+	}
+	done := make(chan result, 1)
+	go func() { snap, err := st.Snapshot(ctx, event.ID); done <- result{snap, err} }()
+	for {
+		var blocked bool
+		err = st.Pool().QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_stat_activity
+    WHERE datname = current_database() AND wait_event_type = 'Lock'
+    AND query LIKE '%FROM courts WHERE event_id%')`).Scan(&blocked)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if blocked {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatal("board never reached the courts query")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	var matchID int64
+	if err = blocker.QueryRow(ctx, `INSERT INTO matches(event_id,court_id) VALUES($1,$2) RETURNING id`, event.ID, courtID).Scan(&matchID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = blocker.Exec(ctx, `INSERT INTO match_players(match_id,player_id,team,active)
+   SELECT $1,player_id,CASE WHEN row_number() OVER (ORDER BY player_id)<=2 THEN 1 ELSE 2 END,true
+   FROM event_players WHERE event_id=$2`, matchID, event.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = blocker.Exec(ctx, `UPDATE event_players SET state='playing',ready_since=NULL WHERE event_id=$1`, event.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err = blocker.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	got := <-done
+	if got.err != nil {
+		t.Fatal(got.err)
+	}
+	if len(got.snap.Queue) != 4 || got.snap.Courts[0].ActiveMatch != nil {
+		t.Fatalf("mixed snapshot: %d queued, active match=%v", len(got.snap.Queue), got.snap.Courts[0].ActiveMatch)
+	}
+	fresh := snapshot(t, st, event.ID)
+	if len(fresh.Queue) != 0 || fresh.Courts[0].ActiveMatch == nil || len(fresh.Courts[0].ActiveMatch.Players) != 4 {
+		t.Fatal("next snapshot did not see the committed match")
+	}
 }
