@@ -90,3 +90,10 @@ func TestFinishedEventRejectsPlayerAndCourtChanges(t *testing.T) {
 		t.Fatalf("finish retry: %v", err)
 	}
 }
+
+func TestLiveEventCannotReturnToSetup(t *testing.T) {
+	st := newTestStore(t)
+	event := liveEvent(t, st, []string{"Court 1"})
+	_, err := st.SetEventState(context.Background(), event.ID, store.EventSetup)
+	mustKind(t, err, store.KindConflict)
+}
