@@ -1,0 +1,173 @@
+{{template "head" .}}
+{{$s := .Snapshot}}{{$csrf := .CSRF}}{{$now := $s.FetchedAt}}
+{{$editable := and (ne $s.Event.State "finished") (not .ReadOnly)}}
+<div class="event-head">
+  <div>
+    <p class="eyebrow">Organizer View</p>
+    <h1>{{$s.Event.Title}}</h1>
+    <p class="sub">{{date $s.Event.Date}} · {{template "statepill" $s.Event.State}}</p>
+  </div>
+  <div class="row">
+  {{if $editable}}<a class="button button-primary" href="/events/{{$s.Event.ID}}/players/new">Add Player</a><form method="post" action="/events/{{$s.Event.ID}}/state" class="inline">
+    <input type="hidden" name="csrf_token" value="{{$csrf}}">
+    {{if eq $s.Event.State "setup"}}
+      <button name="state" value="live" class="button button-primary">Start Event</button>
+    {{else if eq $s.Event.State "live"}}
+      <button name="state" value="finished" class="button">Finish the event</button>
+    {{end}}
+  </form>{{else if not .ReadOnly}}<a class="button button-danger-outline" href="/events/{{$s.Event.ID}}/delete">Delete Event</a>{{end}}
+  </div>
+</div>
+
+{{if eq $s.Event.State "finished"}}
+<p class="banner banner-warn">This event is finished. Player and court controls are closed.</p>
+{{end}}
+
+{{template "eventstats" $s}}
+
+{{if and $editable (eq $s.Event.State "setup")}}
+<section class="card">
+  <h2>1 · Import the roster</h2>
+  <p>Export your Google Form responses as CSV to bring in the roster. Once the event is live, use <strong>Add Player</strong> for new arrivals.</p>
+  <form method="post" action="/events/{{$s.Event.ID}}/import" enctype="multipart/form-data" class="stack">
+    <input type="hidden" name="csrf_token" value="{{$csrf}}">
+    <div class="field">
+      <label for="file">Response sheet (CSV, up to 1 MB)</label>
+      <input id="file" name="file" type="file" accept=".csv,text/csv" required>
+      <p class="help">Needs Display name, Email or club ID, and Skill band. Estimated arrival time and Need a paddle? are optional. New Google Form responses must be imported or added here; they do not sync automatically.</p>
+    </div>
+    <button type="submit" class="button button-primary">Read the File</button>
+  </form>
+</section>
+{{end}}
+
+<section class="card">
+  <h2>Courts</h2>
+  <div class="courts">
+  {{range $s.Courts}}
+    <article class="court {{if .ActiveMatch}}court-busy{{else if not .Available}}court-closed{{else}}court-free{{end}}">
+      <h3>{{.Label}}</h3>
+      {{if .ActiveMatch}}
+        {{template "matchteams" .ActiveMatch}}
+        <p class="meta">Started {{clock .ActiveMatch.StartedAt}}</p>
+        {{if $editable}}<div class="row">
+          <a class="button button-primary" href="/events/{{$s.Event.ID}}/matches/{{.ActiveMatch.ID}}/confirm">Record result</a>
+          <form method="post" action="/events/{{$s.Event.ID}}/matches/{{.ActiveMatch.ID}}/cancel" class="inline">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}">
+            <button class="button button-quiet">Cancel match</button>
+          </form>
+        </div>{{end}}
+      {{else if .Available}}
+        <p class="meta">Free{{if lt (len $s.Queue) 4}} · needs {{len $s.Queue}}/4 ready players{{end}}</p>
+        {{if $editable}}<form method="post" action="/events/{{$s.Event.ID}}/courts/{{.ID}}/next" class="inline">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button class="button button-primary" {{if or (lt (len $s.Queue) 4) (ne $s.Event.State "live")}}disabled{{end}}>
+            Next match
+          </button>
+        </form>
+        <form method="post" action="/events/{{$s.Event.ID}}/courts/{{.ID}}/availability" class="inline">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <input type="hidden" name="available" value="false">
+          <button class="button button-quiet">Close court</button>
+        </form>
+        {{end}}
+      {{else}}
+        <p class="meta">Closed</p>
+        {{if $editable}}
+        <form method="post" action="/events/{{$s.Event.ID}}/courts/{{.ID}}/availability" class="inline">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <input type="hidden" name="available" value="true">
+          <button class="button">Reopen court</button>
+        </form>{{end}}
+      {{end}}
+    </article>
+  {{end}}
+  </div>
+  {{if and $editable (lt (len $s.Courts) 8)}}<form method="post" action="/events/{{$s.Event.ID}}/courts" class="inline add-court">
+    <input type="hidden" name="csrf_token" value="{{$csrf}}">
+    <label for="label" class="visually-hidden">New court label</label>
+    <input id="label" name="label" placeholder="Court 3" maxlength="40" required>
+    <button class="button button-quiet">Add court</button>
+  </form>{{end}}
+</section>
+
+<section class="card">
+  <h2>Queue</h2>
+  {{if $s.Queue}}
+  <div class="table-scroll"><table class="table">
+    <thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Waiting</th>
+      {{if $.Ratings}}<th scope="col">Rating</th>{{end}}<th scope="col">Action</th></tr></thead>
+    <tbody>
+    {{range $i, $p := $s.Queue}}
+      <tr{{if lt $i 4}} class="next-up"{{end}}>
+        <td>{{add $i 1}}{{if lt $i 4}} <span class="tag">next</span>{{end}}</td>
+        <td>{{$p.DisplayName}}</td>
+        <td>{{waited $p.ReadySince $now}}</td>
+        {{if $.Ratings}}<td>{{rating $p.Rating}}{{if eq $p.RatedGames 0}} <span class="muted">(seed)</span>{{end}}</td>{{end}}
+        <td class="actions">
+          {{if $editable}}{{template "playeraction" dict "Event" $s.Event.ID "Player" $p "State" "resting" "Label" "Rest" "CSRF" $csrf}}
+          {{template "playeraction" dict "Event" $s.Event.ID "Player" $p "State" "left" "Label" "Left" "CSRF" $csrf}}{{end}}
+        </td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table></div>
+  {{else}}
+  <p class="empty">Nobody is ready yet. Check players in below.</p>
+  {{end}}
+</section>
+
+<section class="card" id="roster">
+  <div class="section-head"><div><h2>Player Check-in</h2></div>{{if $editable}}<a class="button button-primary" href="/events/{{$s.Event.ID}}/players/new">Add Player</a>{{end}}</div>
+  {{if $editable}}<form method="post" action="/events/{{$s.Event.ID}}/checkin-all" class="inline">
+    <input type="hidden" name="csrf_token" value="{{$csrf}}">
+    <button class="button button-primary">Check In All</button>
+  </form>{{end}}
+  {{if $s.Roster}}
+  <div class="table-scroll"><table class="table">
+    <thead><tr><th scope="col">Player</th><th scope="col">State</th><th scope="col">Waiting</th><th scope="col">Arrival</th><th scope="col">Paddle?</th>
+      {{if $.Ratings}}<th scope="col">Rating</th><th scope="col">Games</th>{{end}}<th scope="col">Actions</th></tr></thead>
+    <tbody>
+    {{range $p := $s.Roster}}
+      <tr{{if eq $p.State "left"}} class="player-left"{{end}}>
+        <td>{{$p.DisplayName}}</td>
+        <td>{{template "statepill" $p.State}}</td>
+        <td>{{waited $p.ReadySince $now}}</td>
+        {{$registration := index $.Registrations $p.PlayerID}}
+        <td>{{if $registration.EstimatedArrival}}{{$registration.EstimatedArrival}}{{else}}—{{end}}</td>
+        <td>{{paddle $registration.NeedsPaddle}}</td>
+        {{if $.Ratings}}<td>{{rating $p.Rating}}</td><td>{{$p.RatedGames}}</td>{{end}}
+        <td class="actions">
+          {{if and $editable (ne $p.State "playing")}}
+            {{if ne $p.State "ready"}}{{template "playeraction" dict "Event" $s.Event.ID "Player" $p "State" "ready" "Label" "Check in" "CSRF" $csrf}}{{end}}
+            {{if ne $p.State "resting"}}{{template "playeraction" dict "Event" $s.Event.ID "Player" $p "State" "resting" "Label" "Rest" "CSRF" $csrf}}{{end}}
+            {{if ne $p.State "left"}}{{template "playeraction" dict "Event" $s.Event.ID "Player" $p "State" "left" "Label" "Left" "CSRF" $csrf}}{{end}}
+          {{else if eq $p.State "playing"}}
+            <span class="muted">on court</span>
+          {{end}}
+        </td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table></div>
+  {{else}}
+  <p class="empty">No players yet. Add a player or import your roster to get started.</p>
+  {{end}}
+</section>
+
+{{if $s.Recent}}
+<section class="card">
+  <h2>Recent Matches</h2>
+  <ul class="results">
+  {{range $s.Recent}}
+    <li{{if eq .State "cancelled"}} class="match-cancelled"{{end}}>
+      <span class="court-tag">{{.CourtLabel}}</span>
+      {{if eq .State "cancelled"}}<strong>Cancelled</strong>{{else}}<strong>Team {{deref .WinningTeam}} won</strong>{{end}}
+      {{template "matchteams" .}}
+      {{if .EndedAt}}<span class="meta">{{clock .EndedAt}}</span>{{end}}
+    </li>
+  {{end}}
+  </ul>
+</section>
+{{end}}
+{{template "foot" .}}
