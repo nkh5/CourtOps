@@ -1,0 +1,41 @@
+{{template "head" .}}
+<div class="home-grid">
+{{if and .SignedIn (not .ReadOnly)}}
+<section class="organizer-card" id="create-event">
+  <h2>Create an event</h2>
+  <form method="post" action="/events" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div class="field"><label for="title">Event name</label><input id="title" name="title" required maxlength="80" placeholder="Thursday rotating doubles"></div>
+    <div class="field"><label for="date">Date</label><input id="date" name="date" type="date" required></div>
+    <div class="field"><label for="courts">Courts</label><input id="courts" name="courts" value="Court 1, Court 2" aria-describedby="courts-help"><p id="courts-help" class="help">Separate court names with commas. You can add more later.</p></div>
+    <button type="submit" class="button button-primary">Create event <span aria-hidden="true">↗</span></button>
+  </form>
+</section>
+{{end}}
+
+<section class="events-card" id="events">
+  <div class="page-heading"><h1>Events</h1>
+    {{if and .SignedIn (not .ReadOnly)}}<a class="button button-primary" href="#create-event">Get Started</a>
+    {{else if not .SignedIn}}
+      {{if .CanSignIn}}<a class="button button-primary" href="/auth/google/login">Get Started</a>
+      {{else if .DevLogin}}<a class="button button-primary" href="/auth/dev/login">Get Started</a>{{end}}
+    {{end}}
+  </div>
+  {{if .Events}}
+  <ul class="event-list">
+  {{range .Events}}
+    <li class="event-item">
+      <div class="event-date">{{date .Date}}</div>
+      <div class="event-info"><div class="row"><h3>{{if $.SignedIn}}<a href="/events/{{.ID}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}</h3></div>{{template "statepill" .State}}</div>
+      <div class="event-links">{{if $.SignedIn}}<a class="board-link" href="/events/{{.ID}}">Manage event</a>{{end}}<a class="board-link" href="/board/{{.ID}}">Court board <span aria-hidden="true">↗</span></a>{{if and $.SignedIn (not $.ReadOnly) (eq .State "finished")}}<a class="delete-link" href="/events/{{.ID}}/delete">Delete</a>{{end}}</div>
+    </li>
+  {{end}}
+  </ul>
+  {{else}}
+  <div class="empty-state"><h3>A fresh court awaits.</h3><p class="muted">{{if .SignedIn}}Create an event to start your next club night.{{else}}Your club’s events will appear here. Come back soon to see what’s on.{{end}}</p></div>
+  {{end}}
+</section>
+
+
+</div>
+{{template "foot" .}}
