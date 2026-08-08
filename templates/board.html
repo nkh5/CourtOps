@@ -1,0 +1,9 @@
+{{template "head" .}}
+<div id="board" data-event="{{.Snapshot.Event.ID}}">
+{{template "board_body.html" .}}
+</div>
+<p id="stale" class="banner banner-warn" role="status" hidden>
+  Connection lost. This page is showing the last state it received, not the current one.
+</p>
+<script src="/static/board.js" defer></script>
+{{template "foot" .}}
