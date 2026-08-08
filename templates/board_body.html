@@ -1,0 +1,68 @@
+{{$s := .Snapshot}}
+<div class="board-head">
+  <h1>{{$s.Event.Title}}</h1>
+  <p class="sub">{{date $s.Event.Date}} <span class="date-divider" aria-hidden="true">/</span> {{template "statepill" $s.Event.State}}</p>
+</div>
+
+{{template "eventstats" $s}}
+
+<div class="board-main">
+<section class="board-court-section" aria-label="Courts">
+<h2>Courts</h2>
+<div class="courts board-courts">
+{{range $s.Courts}}
+  <article class="court {{if .ActiveMatch}}court-busy{{else if not .Available}}court-closed{{else}}court-free{{end}}">
+    <h2>{{.Label}}</h2>
+    {{if .ActiveMatch}}
+      {{template "matchteams" .ActiveMatch}}
+      <p class="meta">Playing since {{clock .ActiveMatch.StartedAt}}</p>
+    {{else if eq $s.Event.State "finished"}}
+      <p class="free-note">Event finished</p>
+    {{else if .Available}}
+      <p class="free-note">Free — waiting for the next four</p>
+    {{else}}
+      <p class="free-note">Closed</p>
+    {{end}}
+  </article>
+{{end}}
+</div>
+</section>
+
+<section class="board-queue">
+  <h2>Queue</h2>
+  {{if eq $s.Event.State "finished"}}
+  <p class="empty">That’s a wrap. This event has finished.</p>
+  {{else if $s.Queue}}
+  <div class="table-scroll"><table class="table board-queue-table">
+    <thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Waiting</th></tr></thead>
+    <tbody>
+    {{range $i, $p := $s.Queue}}
+      <tr{{if lt $i 4}} class="next-up"{{end}}>
+        <td>{{add $i 1}}{{if lt $i 4}} <span class="tag">next</span>{{end}}</td>
+        <td>{{$p.DisplayName}}</td>
+        <td>{{waited $p.ReadySince $s.FetchedAt}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table></div>
+  {{else}}
+  <p class="empty">Nobody is in the queue right now.</p>
+  {{end}}
+</section>
+
+</div>
+
+{{if $s.Recent}}
+<section class="board-results">
+  <h2>Results</h2>
+  <ul class="results">
+  {{range $s.Recent}}
+    <li{{if eq .State "cancelled"}} class="match-cancelled"{{end}}>
+      <span class="court-tag">{{.CourtLabel}}</span>
+      {{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}
+      {{template "matchteams" .}}
+    </li>
+  {{end}}
+  </ul>
+</section>
+{{end}}
