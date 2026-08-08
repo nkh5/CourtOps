@@ -1,0 +1,72 @@
+{{define "head"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · CourtOps</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="CourtOps home"><span class="brand-name">CourtOps</span><img class="brand-mark" src="/static/mark.svg" width="52" height="52" alt=""></a>
+  <div class="topbar-right">
+    {{if .ReadOnly}}<span class="badge badge-warn">Read-only demo</span>{{end}}
+    {{if .SignedIn}}
+      <span class="who">Organizer: {{.Session.Email}}</span>
+      <form method="post" action="/auth/logout" class="inline">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <button type="submit" class="link-button">Sign out</button>
+      </form>
+    {{else if .CanSignIn}}
+      <a class="button" href="/auth/google/login">Organizer Sign-In</a>
+    {{else if .DevLogin}}
+      <a class="button" href="/auth/dev/login">Organizer Sign-In</a>
+    {{end}}
+  </div>
+</header>
+<main id="main">
+{{if .Notice}}<p class="banner banner-ok" role="status">{{.Notice}}</p>{{end}}
+{{if .Problem}}<p class="banner banner-problem" role="alert">{{.Problem}}</p>{{end}}
+{{end}}
+
+{{define "foot"}}
+</main>
+</body>
+</html>
+{{end}}
+
+{{define "statepill"}}<span class="pill pill-{{.}}">{{. | title}}</span>{{end}}
+
+{{define "eventstats"}}
+{{$stats := eventStats .}}
+<dl class="event-stats" aria-label="Event at a glance">
+  <div><dt>Checked in</dt><dd>{{$stats.CheckedIn}} <span>players</span></dd></div>
+  <div><dt>In the queue</dt><dd>{{$stats.Queue}} <span>waiting</span></dd></div>
+  <div><dt>On court</dt><dd>{{$stats.OnCourt}} <span>playing</span></dd></div>
+  <div><dt>Courts available</dt><dd>{{$stats.CourtsAvailable}} <span>/ {{$stats.CourtsTotal}}</span></dd></div>
+</dl>
+{{end}}
+
+{{define "matchteams"}}
+<div class="teams">
+  <div class="team{{if and (eq .State "completed") .WinningTeam (eq (deref .WinningTeam) 1)}} team-winner{{end}}">
+    <h4>Team 1{{if and (eq .State "completed") .WinningTeam (eq (deref .WinningTeam) 1)}} <span class="won">· won</span>{{end}}</h4>
+    <ul>{{range teamOf . 1}}<li>{{.DisplayName}}{{$d := pdelta .}}{{if $d}} <span class="delta">{{$d}}</span>{{end}}</li>{{end}}</ul>
+  </div>
+  <div class="versus" aria-hidden="true">vs</div>
+  <div class="team{{if and (eq .State "completed") .WinningTeam (eq (deref .WinningTeam) 2)}} team-winner{{end}}">
+    <h4>Team 2{{if and (eq .State "completed") .WinningTeam (eq (deref .WinningTeam) 2)}} <span class="won">· won</span>{{end}}</h4>
+    <ul>{{range teamOf . 2}}<li>{{.DisplayName}}{{$d := pdelta .}}{{if $d}} <span class="delta">{{$d}}</span>{{end}}</li>{{end}}</ul>
+  </div>
+</div>
+{{end}}
+
+{{define "playeraction"}}
+<form method="post" action="/events/{{.Event}}/players/{{.Player.PlayerID}}/state" class="inline">
+  <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+  <input type="hidden" name="state" value="{{.State}}">
+  <input type="hidden" name="expected_state" value="{{.Player.State}}">
+  <button class="button button-small">{{.Label}}</button>
+</form>
+{{end}}
