@@ -1,0 +1,65 @@
+{{template "head" .}}
+{{$i := .Import}}
+<h1>Roster import</h1>
+
+{{if $i.Applied}}
+<section class="card">
+  <h2>Imported</h2>
+  <ul class="summary">
+    <li><strong>{{$i.Applied.PlayersCreated}}</strong> new player record(s)</li>
+    <li><strong>{{$i.Applied.PlayersMatched}}</strong> matched an existing player by email or club ID</li>
+    <li><strong>{{$i.Applied.MembershipsAdded}}</strong> added to this event</li>
+    <li><strong>{{$i.Applied.MembershipsSkipped}}</strong> were already on this event's roster</li>
+  </ul>
+  <p class="help">Players who have already played rated games keep their earned rating;
+     a new self-reported band only seeds someone who has never been rated.</p>
+  <a class="button button-primary" href="/events/{{$i.EventID}}">Back to the event</a>
+</section>
+
+{{else}}
+
+{{if $i.Result.Errors}}
+<section class="card card-problem">
+  <h2>{{len $i.Result.Errors}} row(s) need fixing</h2>
+  <p>Nothing has been imported. Fix these rows in the sheet, export again and retry:
+     a partly imported roster is harder to notice than a rejected one.</p>
+  <div class="table-scroll"><table class="table">
+    <thead><tr><th scope="col">Row</th><th scope="col">Problem</th></tr></thead>
+    <tbody>
+    {{range $i.Result.Errors}}<tr><td>{{if .Row}}{{.Row}}{{else}}—{{end}}</td><td>{{.Message}}</td></tr>{{end}}
+    </tbody>
+  </table></div>
+</section>
+{{end}}
+
+{{if $i.Result.Entries}}
+<section class="card">
+  <h2>Preview · {{len $i.Result.Entries}} valid player(s)</h2>
+  {{if $i.Result.Duplicates}}<p class="help">{{$i.Result.Duplicates}} exact duplicate row(s) were ignored.</p>{{end}}
+  <div class="table-scroll"><table class="table">
+    <thead><tr><th scope="col">Row</th><th scope="col">Display name</th><th scope="col">Band</th><th scope="col">Seed</th><th scope="col">Arrival</th><th scope="col">Paddle?</th></tr></thead>
+    <tbody>
+    {{range $i.Result.Entries}}
+      <tr><td>{{.Row}}</td><td>{{.DisplayName}}</td><td>{{.Band}}</td><td>{{.Seed}}</td><td>{{if .EstimatedArrival}}{{.EstimatedArrival}}{{else}}—{{end}}</td><td>{{paddle .NeedsPaddle}}</td></tr>
+    {{end}}
+    </tbody>
+  </table></div>
+  <p class="help">Email addresses and club IDs are read from the file to recognise returning
+     players. They are not shown here and never appear on the public board.</p>
+
+  {{if $i.Result.OK}}
+  <form method="post" action="/events/{{$i.EventID}}/import" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="confirm" value="1">
+    <input type="hidden" name="csv" value="{{$i.Raw}}">
+    <button type="submit" class="button button-primary">Import these {{len $i.Result.Entries}} players</button>
+  </form>
+  <p class="help">The file is validated again when you confirm, so what is imported is
+     exactly what the server just checked.</p>
+  {{end}}
+</section>
+{{end}}
+
+<p><a href="/events/{{$i.EventID}}">Back to the event</a></p>
+{{end}}
+{{template "foot" .}}
