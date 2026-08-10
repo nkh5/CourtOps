@@ -1,0 +1,15 @@
+{{template "head" .}}
+{{$s := .Snapshot}}
+<a class="back-link" href="/events/{{$s.Event.ID}}">← Back to the event</a>
+<section class="card form-card card-problem">
+  <p class="eyebrow">Finished event</p>
+  <h1>Delete {{$s.Event.Title}}?</h1>
+  <p>This permanently removes the event, its roster registrations, courts, and matches.</p>
+  <p class="banner banner-warn">Events with recorded rating changes cannot be deleted because those results are part of the players’ Elo history.</p>
+  <form method="post" action="/events/{{$s.Event.ID}}/delete" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div class="field"><label for="confirmation">Type DELETE to confirm</label><input id="confirmation" name="confirmation" pattern="DELETE" autocomplete="off" required aria-describedby="delete-help"><p id="delete-help" class="help">This action cannot be undone.</p></div>
+    <div class="row"><button class="button button-danger" type="submit">Delete Event</button><a class="button" href="/events/{{$s.Event.ID}}">Keep Event</a></div>
+  </form>
+</section>
+{{template "foot" .}}
