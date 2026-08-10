@@ -1,0 +1,18 @@
+{{template "head" .}}
+{{$s := .Snapshot}}
+<a class="back-link" href="/events/{{$s.Event.ID}}">← Back to {{$s.Event.Title}}</a>
+<section class="card form-card">
+  <div class="section-head"><div><p class="eyebrow">{{$s.Event.Title}}</p><h1>Add Player</h1></div>{{template "statepill" $s.Event.State}}</div>
+  <p class="lede">Someone just arrived? Add them to this event and check them in when they’re ready to play.</p>
+  <form method="post" action="/events/{{$s.Event.ID}}/players" class="stack form-grid">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div class="field"><label for="display_name">Display name</label><input id="display_name" name="display_name" maxlength="80" autocomplete="name" required placeholder="Name shown on the court board"></div>
+    <div class="field"><label for="private_ref">Email or club ID</label><input id="private_ref" name="private_ref" maxlength="200" required aria-describedby="identifier-help"><p id="identifier-help" class="help">Used to recognize returning players. Never shown on the public board.</p></div>
+    <div class="field"><label for="skill_band">Skill band</label><select id="skill_band" name="skill_band" required><option value="">Select a skill band</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
+    <div class="field"><label for="estimated_arrival">Estimated arrival time <span class="muted">(optional)</span></label><input id="estimated_arrival" name="estimated_arrival" maxlength="120" placeholder="e.g. 6:30 PM"></div>
+    <fieldset class="field"><legend>Need a paddle?</legend><div class="row"><label class="choice"><input type="radio" name="needs_paddle" value="yes"> Yes</label><label class="choice"><input type="radio" name="needs_paddle" value="no"> No</label><label class="choice"><input type="radio" name="needs_paddle" value="" checked> Not specified</label></div></fieldset>
+    <div class="form-wide check-in-option"><label class="choice"><input type="checkbox" name="check_in" value="1" checked> Check player in immediately</label><p class="help">They’ll join the end of the ready queue. Otherwise, they’ll be added to the roster as resting.</p></div>
+    <div class="row form-wide"><button class="button button-primary" type="submit">Add Player</button><a class="button" href="/events/{{$s.Event.ID}}">Cancel</a></div>
+  </form>
+</section>
+{{template "foot" .}}
