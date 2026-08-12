@@ -1,0 +1,41 @@
+{{template "head" .}}
+{{$s := .Snapshot}}{{$m := .Match}}
+<h1>Record the result on {{$m.CourtLabel}}</h1>
+
+{{if ne $m.State "active"}}
+<p class="banner banner-warn" role="status">
+  This match is already {{$m.State}}{{if $m.WinningTeam}} — team {{deref $m.WinningTeam}} won{{end}}.
+  Submitting the same result again changes nothing; a different result is refused.
+</p>
+{{end}}
+
+<section class="card">
+  {{template "matchteams" $m}}
+  <p class="meta">Started {{clock $m.StartedAt}}</p>
+
+  {{if .Ratings}}
+  <p class="banner banner-warn" role="note">
+    Ratings are on. Once a result is confirmed it cannot be edited in this version,
+    and the rating change is applied in the same transaction as the result.
+  </p>
+  {{end}}
+
+  <form method="post" action="/events/{{$s.Event.ID}}/matches/{{$m.ID}}/complete" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <fieldset>
+      <legend>Which team won?</legend>
+      <div class="row">
+        <button name="winning_team" value="1" class="button button-primary">Team 1 won</button>
+        <button name="winning_team" value="2" class="button button-primary">Team 2 won</button>
+      </div>
+    </fieldset>
+  </form>
+
+  <form method="post" action="/events/{{$s.Event.ID}}/matches/{{$m.ID}}/cancel" class="inline">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <button class="button button-quiet">Cancel this match instead (no result, no rating change)</button>
+  </form>
+</section>
+
+<p><a href="/events/{{$s.Event.ID}}">Back to the event</a></p>
+{{template "foot" .}}
