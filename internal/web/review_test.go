@@ -8,7 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-
+	"net/url"
 	"strings"
 
 	"testing"
@@ -59,6 +59,57 @@ func TestOversizedMultipartIsRejectedBeforeCSRF(t *testing.T) {
 	w := httptest.NewRecorder()
 	s.organizerOnly(func(http.ResponseWriter, *http.Request) { t.Error("oversized upload reached handler") }).ServeHTTP(w, r)
 	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body)
+	}
+}
+
+func TestMalformedAndOversizedActionFormsCannotMutate(t *testing.T) {
+	for _, tt := range []struct {
+		name, body string
+		status     int
+	}{
+		{"malformed escaping", "available=true&bad=%zz", http.StatusBadRequest},
+		{"oversized", "available=true&padding=" + strings.Repeat("x", 70<<10), http.StatusRequestEntityTooLarge},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			s := reviewServer(t)
+			r := signedForm(t, s, "/events/1/courts/1/availability", "application/x-www-form-urlencoded", strings.NewReader(tt.body))
+			r.Header.Set(csrfHeader, strings.Repeat("c", 64))
+			w := httptest.NewRecorder()
+			s.organizerOnly(func(http.ResponseWriter, *http.Request) { t.Error("invalid form reached handler") }).ServeHTTP(w, r)
+			if w.Code != tt.status {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body)
+			}
+		})
+	}
+}
+
+func TestImportConfirmationAllowsEncodingExpansionAndPreservesLines(t *testing.T) {
+	s := reviewServer(t)
+	raw := "\nName,Email,Skill,Notes\nAna,a@example.com,Beginner," + strings.Repeat("界", 200000) + "\n"
+	form := url.Values{"csrf_token": {strings.Repeat("c", 64)}, "csv": {raw}, "confirm": {"1"}}
+	encoded := form.Encode()
+	if len(raw) >= roster.MaxBytes || len(encoded) <= roster.MaxBytes {
+		t.Fatal("fixture does not exercise encoding expansion")
+	}
+	r := signedForm(t, s, "/events/1/import", "application/x-www-form-urlencoded", strings.NewReader(encoded))
+	w := httptest.NewRecorder()
+	called := false
+	s.organizerOnly(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		got, err := s.readUpload(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != raw {
+			t.Fatal("upload changed the CSV bytes or line positions")
+		}
+		parsed, err := roster.Parse(strings.NewReader(got))
+		if err != nil || !parsed.OK() || parsed.Entries[0].Row != 3 {
+			t.Fatalf("parsed=%+v err=%v", parsed, err)
+		}
+	}).ServeHTTP(w, r)
+	if !called || w.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body)
 	}
 }
