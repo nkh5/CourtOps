@@ -256,6 +256,43 @@ func TestHealthz(t *testing.T) {
 	}
 }
 
+func TestOrganizerRoutesRequireSignIn(t *testing.T) {
+	c := newClient(t, nil)
+
+	t.Run("a page redirects to sign in", func(t *testing.T) {
+		resp := c.get("/events/1")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Fatalf("status = %d, want a redirect to the sign-in page", resp.StatusCode)
+		}
+	})
+
+	t.Run("a mutation is refused", func(t *testing.T) {
+		resp := c.postRaw("/events", url.Values{"title": {"Sneaky"}, "date": {"2026-09-20"}})
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("status = %d, want 401", resp.StatusCode)
+		}
+		if n := countEvents(t, c); n != 0 {
+			t.Errorf("events = %d, want the write to have been refused", n)
+		}
+	})
+}
+
+func TestCSRFIsEnforced(t *testing.T) {
+	c := newClient(t, nil)
+	c.signIn()
+
+	resp := c.postRaw("/events", url.Values{"title": {"No token"}, "date": {"2026-09-20"}})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 without a CSRF token", resp.StatusCode)
+	}
+	if n := countEvents(t, c); n != 0 {
+		t.Errorf("events = %d, want 0", n)
+	}
+}
+
 // Helpers that read through the app's own JSON, so the tests exercise the
 // contract the board relies on.
 
