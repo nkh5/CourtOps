@@ -293,6 +293,99 @@ func TestCSRFIsEnforced(t *testing.T) {
 	}
 }
 
+func TestReadOnlyDeploymentRefusesWrites(t *testing.T) {
+	c := newClient(t, func(cfg *config.Config) { cfg.ReadOnly = true })
+	c.signIn()
+
+	resp := c.post("/events", url.Values{"title": {"Demo"}, "date": {"2026-09-20"}})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503 on a read-only deployment", resp.StatusCode)
+	}
+}
+
+// TestOrganizerWorkflow walks the whole evening through HTTP: create, import,
+// check in, assign, record a result.
+func TestOrganizerWorkflow(t *testing.T) {
+	c := newClient(t, nil)
+	c.signIn()
+
+	resp := c.post("/events", url.Values{
+		"title":  {"Thursday doubles"},
+		"date":   {"2026-09-24"},
+		"courts": {"Court 1, Court 2"},
+	})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("create event status = %d, want 303", resp.StatusCode)
+	}
+	eventID := int64(1)
+
+	t.Run("import the roster", func(t *testing.T) {
+		csv := "Name,Email,Skill\n" +
+			"Ana,ana@example.com,Advanced\n" +
+			"Ben,ben@example.com,Intermediate\n" +
+			"Chi,chi@example.com,Intermediate\n" +
+			"Dee,dee@example.com,Beginner\n"
+
+		preview := c.post("/events/1/import", url.Values{"csv": {csv}})
+		wantStatus(t, preview, http.StatusOK)
+		if html := body(t, preview); !strings.Contains(html, "4 valid player") {
+			t.Errorf("preview did not list the four players:\n%s", truncate(html, 500))
+		}
+
+		confirm := c.post("/events/1/import", url.Values{"csv": {csv}, "confirm": {"1"}})
+		wantStatus(t, confirm, http.StatusOK)
+		if html := body(t, confirm); !strings.Contains(html, "Imported") {
+			t.Errorf("confirmation page did not report the import:\n%s", truncate(html, 500))
+		}
+	})
+
+	t.Run("start and fill a court", func(t *testing.T) {
+		start := c.post("/events/1/state", url.Values{"state": {"live"}})
+		start.Body.Close()
+
+		checkIn := c.post("/events/1/checkin-all", nil)
+		checkIn.Body.Close()
+
+		snap := snapshotOf(t, c, eventID)
+		if len(snap.Queue) != 4 {
+			t.Fatalf("queue = %d, want 4 ready players", len(snap.Queue))
+		}
+
+		assign := c.post("/events/1/courts/1/next", nil)
+		assign.Body.Close()
+
+		if n := activeMatches(t, c, eventID); n != 1 {
+			t.Fatalf("active matches = %d, want 1", n)
+		}
+	})
+
+	t.Run("a repeated assignment does not take a second court", func(t *testing.T) {
+		again := c.post("/events/1/courts/1/next", nil)
+		again.Body.Close()
+		if n := activeMatches(t, c, eventID); n != 1 {
+			t.Errorf("active matches = %d after a retry, want 1", n)
+		}
+	})
+
+	t.Run("record the result", func(t *testing.T) {
+		matchID := activeMatchID(t, c, eventID)
+
+		done := c.post("/events/1/matches/"+itoa(matchID)+"/complete", url.Values{"winning_team": {"1"}})
+		done.Body.Close()
+
+		repeat := c.post("/events/1/matches/"+itoa(matchID)+"/complete", url.Values{"winning_team": {"1"}})
+		repeat.Body.Close()
+
+		conflict := c.post("/events/1/matches/"+itoa(matchID)+"/complete", url.Values{"winning_team": {"2"}})
+		defer conflict.Body.Close()
+		if conflict.StatusCode != http.StatusConflict {
+			t.Errorf("conflicting result status = %d, want 409", conflict.StatusCode)
+		}
+	})
+}
+
 // Helpers that read through the app's own JSON, so the tests exercise the
 // contract the board relies on.
 
