@@ -386,6 +386,58 @@ func TestOrganizerWorkflow(t *testing.T) {
 	})
 }
 
+// TestPublicBoardHidesPrivateData is the check that matters for handing the
+// board to a room full of strangers.
+func TestPublicBoardHidesPrivateData(t *testing.T) {
+	c := newClient(t, nil)
+	c.signIn()
+
+	c.post("/events", url.Values{"title": {"Public"}, "date": {"2026-09-24"}, "courts": {"Court 1"}}).Body.Close()
+	csv := "Name,Email,Skill\nAna,ana.private@example.com,Advanced\nBen,ben.private@example.com,Beginner\n"
+	c.post("/events/1/import", url.Values{"csv": {csv}, "confirm": {"1"}}).Body.Close()
+	// Check people in so the board has names to show at all.
+	c.post("/events/1/checkin-all", nil).Body.Close()
+
+	// Sign out: a spectator is not an organizer.
+	c.post("/auth/logout", nil).Body.Close()
+
+	for _, path := range []string{"/board/1", "/board/1/state.json"} {
+		text := body(t, c.get(path))
+		for _, secret := range []string{"ana.private@example.com", "ben.private@example.com", "private_ref"} {
+			if strings.Contains(text, secret) {
+				t.Errorf("%s leaked %q", path, secret)
+			}
+		}
+		if !strings.Contains(text, "Ana") {
+			t.Errorf("%s did not show the display name", path)
+		}
+	}
+
+	t.Run("the organizer JSON is not public", func(t *testing.T) {
+		resp := c.get("/events/1/state.json")
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("status = %d, want 401 for a signed-out visitor", resp.StatusCode)
+		}
+	})
+}
+
+func TestBoardFragmentRendersWithoutLayout(t *testing.T) {
+	c := newClient(t, nil)
+	c.signIn()
+	c.post("/events", url.Values{"title": {"Fragment"}, "date": {"2026-09-24"}, "courts": {"Court 1"}}).Body.Close()
+
+	full := body(t, c.get("/board/1"))
+	fragment := body(t, c.get("/board/1?fragment=1"))
+
+	if strings.Contains(fragment, "<!doctype html>") {
+		t.Error("the polling fragment should not repeat the whole document")
+	}
+	if !strings.Contains(fragment, "Court 1") || !strings.Contains(full, "Court 1") {
+		t.Error("both responses should show the court")
+	}
+}
+
 // Helpers that read through the app's own JSON, so the tests exercise the
 // contract the board relies on.
 
