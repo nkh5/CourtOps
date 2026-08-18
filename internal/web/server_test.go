@@ -1,8 +1,9 @@
 package web_test
 
 import (
+	"context"
 	"encoding/json"
-
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 	"time"
 
 	"github.com/nicholashu/courtops/internal/config"
-
+	"github.com/nicholashu/courtops/internal/roster"
 	"github.com/nicholashu/courtops/internal/store"
 	"github.com/nicholashu/courtops/internal/testdb"
 	"github.com/nicholashu/courtops/internal/web"
@@ -438,6 +439,15 @@ func TestBoardFragmentRendersWithoutLayout(t *testing.T) {
 	}
 }
 
+func TestUnknownPathIsNotFound(t *testing.T) {
+	c := newClient(t, nil)
+	resp := c.get("/no-such-page")
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", resp.StatusCode)
+	}
+}
+
 // Helpers that read through the app's own JSON, so the tests exercise the
 // contract the board relies on.
 
@@ -506,4 +516,37 @@ func itoa(v int64) string {
 		v /= 10
 	}
 	return string(b)
+}
+
+func TestFinishedOrganizerPageHasNoEventWriteForms(t *testing.T) {
+	c := newClient(t, nil)
+	c.signIn()
+	ctx := context.Background()
+	event, err := c.st.CreateEvent(ctx, "Finished evening", time.Now(), []string{"Court 1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := roster.Parse(strings.NewReader("Name,Email,Skill\nAna,ana@example.com,Beginner\nBen,ben@example.com,Advanced\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = c.st.ImportRoster(ctx, event.ID, parsed.Entries); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = c.st.CheckInAll(ctx, event.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = c.st.SetEventState(ctx, event.ID, store.EventFinished); err != nil {
+		t.Fatal(err)
+	}
+	path := fmt.Sprintf("/events/%d", event.ID)
+	resp := c.get(path)
+	wantStatus(t, resp, http.StatusOK)
+	html := body(t, resp)
+	if strings.Contains(html, `method="post" action="`+path) {
+		t.Fatal("finished event still offers write forms")
+	}
+	if !strings.Contains(html, "This event is finished") {
+		t.Fatal("finished event has no explanation")
+	}
 }
