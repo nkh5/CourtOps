@@ -2,7 +2,8 @@ package web
 
 import (
 	"bytes"
-
+	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"mime/multipart"
@@ -10,10 +11,12 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/nicholashu/courtops/internal/config"
 	"github.com/nicholashu/courtops/internal/roster"
 )
@@ -114,6 +117,58 @@ func TestImportConfirmationAllowsEncodingExpansionAndPreservesLines(t *testing.T
 	}
 }
 
+func TestCourtAvailabilityRequiresExplicitBoolean(t *testing.T) {
+	s := reviewServer(t)
+	for _, value := range []string{"", "tru", "0"} {
+		r := httptest.NewRequest(http.MethodPost, "/events/1/courts/1/availability", strings.NewReader(url.Values{"available": {value}}.Encode()))
+		r.SetPathValue("eventID", "1")
+		r.SetPathValue("courtID", "1")
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.Header.Set("Accept", "application/json")
+		w := httptest.NewRecorder()
+		// No store is supplied: invalid input must be refused before a write.
+		s.handleCourtAvailability(w, r)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("available=%q status=%d", value, w.Code)
+		}
+	}
+}
+
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestConcurrentDiscoveryRecoversAfterFailure(t *testing.T) {
+	var calls atomic.Int32
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.String() != googleIssuer+"/.well-known/openid-configuration" {
+			return nil, fmt.Errorf("unexpected URL %s", r.URL)
+		}
+		if calls.Add(1) == 1 {
+			time.Sleep(10 * time.Millisecond)
+			return nil, fmt.Errorf("temporary outage")
+		}
+		metadata := `{"issuer":"https://accounts.google.com","authorization_endpoint":"https://accounts.google.com/auth","token_endpoint":"https://accounts.google.com/token","jwks_uri":"https://accounts.google.com/keys","id_token_signing_alg_values_supported":["RS256"]}`
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(metadata))}, nil
+	})}
+	ctx := oidc.ClientContext(context.Background(), client)
+	auth := &googleAuth{clientID: "client", clientSecret: "secret", redirectURL: "https://example.com/auth/google/callback"}
+	var wg sync.WaitGroup
+	errs := make([]error, 16)
+	start := make(chan struct{})
+	for i := range errs {
+		wg.Add(1)
+		go func(i int) { defer wg.Done(); <-start; _, _, errs[i] = auth.config(ctx) }(i)
+	}
+	close(start)
+	wg.Wait()
+	failures := 0
+	for _, err := range errs {
+		if err != nil {
+			failures++
+		}
+	}
+	if calls.Load() != 2 || failures != 1 {
+		t.Fatalf("discovery calls=%d failures=%d, want 2 and 1", calls.Load(), failures)
+	}
+}
