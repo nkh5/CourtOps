@@ -172,3 +172,24 @@ func TestConcurrentDiscoveryRecoversAfterFailure(t *testing.T) {
 		t.Fatalf("discovery calls=%d failures=%d, want 2 and 1", calls.Load(), failures)
 	}
 }
+
+func TestOAuthCookieIsClearedOnItsOriginalPath(t *testing.T) {
+	s := reviewServer(t)
+	w := httptest.NewRecorder()
+	s.clearCookie(w, oauthCookie)
+	cookies := w.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Path != "/auth" || cookies[0].MaxAge != -1 {
+		t.Fatalf("cookie deletion=%+v", cookies)
+	}
+}
+
+func TestReturnPathRejectsBrowserRedirectEscapes(t *testing.T) {
+	for _, raw := range []string{"https://example.com", "//example.com", "/\\example.com", "/\n/example.com"} {
+		if got := safeReturnPath(raw); got != "/" {
+			t.Errorf("safeReturnPath(%q)=%q", raw, got)
+		}
+	}
+	if got := safeReturnPath("/events/12?tab=queue"); got != "/events/12?tab=queue" {
+		t.Errorf("valid return path lost: %s", got)
+	}
+}
