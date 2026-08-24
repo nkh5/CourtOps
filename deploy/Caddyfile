@@ -1,0 +1,30 @@
+# Caddy obtains and renews the certificate automatically for this domain, so
+# there is no certbot timer to forget about. The domain must already point at
+# this host before the container starts, or the challenge fails.
+
+{$COURTOPS_DOMAIN} {
+	encode zstd gzip
+
+	# Basic hardening. The app serves no third-party scripts, so the content
+	# security policy can be strict.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+		-Server
+	}
+
+	reverse_proxy app:8080 {
+		health_uri /healthz
+		health_interval 30s
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}
