@@ -1,0 +1,10 @@
+# Opt-in dual-stack bridge. Keep IPv4 enabled (the Compose default).
+# docker compose -f deploy/compose.yaml -f deploy/compose.ipv6.yaml up -d
+# Requires host IPv6, Docker IPv6 firewall support, VPC routing and DNS; see docs/IPV6.md.
+networks:
+  default:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: ${COURTOPS_DOCKER_IPV4_SUBNET:-172.30.40.0/24}
+        - subnet: ${COURTOPS_DOCKER_IPV6_SUBNET:-fd62:3ab9:70c1::/64}
