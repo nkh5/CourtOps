@@ -1,0 +1,83 @@
+# The whole deployment: Caddy for HTTPS, the Go app, and PostgreSQL.
+#
+# Only Caddy publishes ports. PostgreSQL is reachable on the internal network
+# and nowhere else, which is what keeps 5432 off the public internet.
+#
+# Usage on the host:
+#   cd /opt/courtops && docker compose up -d
+#
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data      # certificates; losing this means re-issuing them
+      - caddy-config:/config
+    environment:
+      COURTOPS_DOMAIN: ${COURTOPS_DOMAIN:?set COURTOPS_DOMAIN in .env}
+    depends_on:
+      app:
+        condition: service_healthy
+
+  app:
+    image: ${COURTOPS_IMAGE:-courtops:latest}
+    restart: unless-stopped
+    environment:
+      COURTOPS_ENV: production
+      COURTOPS_ADDR: ":8080"
+      COURTOPS_BASE_URL: "https://${COURTOPS_DOMAIN}"
+      DATABASE_URL: "postgres://courtops:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/courtops?sslmode=disable"
+      COURTOPS_SESSION_SECRET: ${COURTOPS_SESSION_SECRET:?set COURTOPS_SESSION_SECRET in .env}
+      COURTOPS_ORGANIZERS: ${COURTOPS_ORGANIZERS:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URL: "https://${COURTOPS_DOMAIN}/auth/google/callback"
+      # Keep the first public release read-only until sign-in is verified.
+      COURTOPS_READ_ONLY: ${COURTOPS_READ_ONLY:-false}
+      COURTOPS_RATINGS: ${COURTOPS_RATINGS:-false}
+      TZ: ${TZ:-America/Chicago}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"   # log rotation, so an evening of polling cannot fill the disk
+        max-file: "5"
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: courtops
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: courtops
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # No ports section on purpose: the database is not published to the host.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U courtops -d courtops"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  db-data:      # the only volume whose loss means restoring from backup
+  caddy-data:
+  caddy-config:
