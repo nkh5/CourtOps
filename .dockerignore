@@ -1,0 +1,35 @@
+# Only application source and embedded assets belong in the build context.
+# Git history, local configuration, roster exports, backups and reports stay out.
+*
+!go.mod
+!go.sum
+!cmd/
+!cmd/**
+!internal/
+!internal/**
+!migrations/
+!migrations/**
+!templates/
+!templates/**
+!static/
+!static/**
+!deploy/
+!deploy/Dockerfile
+
+# Also protect against secrets accidentally placed inside a source directory.
+**/.env
+**/.env.*
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/*.keystore
+**/id_rsa
+**/id_ed25519
+**/credentials.json
+**/service-account*.json
+**/*.private.csv
+**/*.sql.gz
+**/*.sql.gz.enc
+**/*.dump
+**/*.backup
