@@ -1,0 +1,27 @@
+name: Production health
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: courtops-health
+  cancel-in-progress: true
+jobs:
+  health:
+    # Enable only after the real URL and failure notifications are configured.
+    if: vars.COURTOPS_HEALTH_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check HTTPS and PostgreSQL
+        env:
+          HEALTH_URL: ${{ vars.COURTOPS_HEALTH_URL }}
+        run: ./scripts/check-health.sh "$HEALTH_URL"
+      - name: Report actionable failure
+        if: failure()
+        run: |
+          echo '::error::CourtOps public health check failed. Inspect Caddy, app JSON error logs, and PostgreSQL; see the deployment guide.'
+          echo 'Health check failed. Follow the deployment guide. GitHub Actions notification preferences determine who is notified.' >> "$GITHUB_STEP_SUMMARY"
