@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        # Same major version as development and the deployed host: a dump from
+        # one major version does not restore into another.
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: courtops
+          POSTGRES_PASSWORD: courtops
+          POSTGRES_DB: courtops
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U courtops -d courtops"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # The tests create and drop their own databases on this server.
+      TEST_DATABASE_URL: postgres://courtops:courtops@localhost:5432/courtops?sslmode=disable
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Validate operations scripts
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Verify go.mod is tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Unit and integration tests with the race detector
+        # -race catches data races in Go; the PostgreSQL tests catch the
+        # database races. They are different classes of bug, so both run.
+        run: go test -race -count=1 ./...
+
+      - name: Algorithm benchmarks
+        # Run once to keep them compiling and to print numbers in the log.
+        run: go test -run '^$' -bench . -benchtime 100x ./internal/matchmaking/
+
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the release image
+        run: |
+          docker build -f deploy/Dockerfile \
+            --build-arg VERSION="${GITHUB_SHA::7}" \
+            -t courtops:ci .
+
+      - name: The binary starts and reports its version
+        run: docker run --rm courtops:ci -version
+
+      - name: A production config without sign-in is refused
+        run: |
+          # An unprotected production deployment must fail to start, not serve
+          # organizer controls to the public.
+          if docker run --rm \
+              -e COURTOPS_ENV=production \
+              -e COURTOPS_BASE_URL=https://example.com \
+              -e DATABASE_URL=postgres://user:pass@db:5432/courtops \
+              courtops:ci; then
+            echo "the app started without sign-in configured; that guard is broken"
+            exit 1
+          fi
