@@ -1,0 +1,89 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy to the configured EC2 host after building
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: courtops-release
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.name.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: name
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "image=ghcr.io/${REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          file: deploy/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.name.outputs.image }}:${{ github.sha }}
+          build-args: VERSION=${{ github.sha }}
+      - name: Record immutable release
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: echo "Image to deploy — \`$IMAGE@$DIGEST\`" >> "$GITHUB_STEP_SUMMARY"
+  deploy:
+    if: inputs.deploy
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Deploy the immutable image with verified backup
+        env:
+          SSH_HOST: ${{ secrets.EC2_HOST }}
+          SSH_USER: ${{ secrets.EC2_USER }}
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+          COMPOSE_PROJECT: ${{ vars.COMPOSE_PROJECT_NAME }}
+          IMAGE: ${{ needs.publish.outputs.image }}@${{ needs.publish.outputs.digest }}
+        run: |
+          set -euo pipefail
+          [[ "$SSH_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ "$SSH_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]]
+          [[ "$COMPOSE_PROJECT" =~ ^[a-z0-9][a-z0-9_-]*$ ]]
+          [[ "$IMAGE" =~ ^ghcr\.io/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$ ]]
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/courtops"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/courtops" "$HOME/.ssh/known_hosts"
+          trap 'rm -f "$HOME/.ssh/courtops"' EXIT
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
+            -i "$HOME/.ssh/courtops" "$SSH_USER@$SSH_HOST" \
+            "cd /opt/courtops && COMPOSE_PROJECT_NAME='$COMPOSE_PROJECT' ./scripts/deploy-release.sh '$IMAGE'"
+      - uses: actions/checkout@v4
+      - name: Verify the public application and database
+        env:
+          HEALTH_URL: ${{ vars.COURTOPS_HEALTH_URL }}
+        run: ./scripts/check-health.sh "$HEALTH_URL"
