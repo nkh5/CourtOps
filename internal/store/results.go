@@ -150,3 +150,10 @@ func (r EventResults) Search(query string) []ResultPlayer {
 	}
 	return found
 }
+
+type PlayerHistory struct {
+	Player  ResultPlayer
+	Matches []Match
+	Events  map[int64]Event
+	HasNext bool
+}
