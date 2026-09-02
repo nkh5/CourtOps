@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/jackc/pgx/v5"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -137,4 +138,15 @@ func (s *Store) Results(ctx context.Context, eventID int64) (EventResults, error
 		return nil
 	})
 	return out, err
+}
+
+func (r EventResults) Search(query string) []ResultPlayer {
+	query = strings.ToLower(strings.TrimSpace(query))
+	var found []ResultPlayer
+	for _, p := range r.Players {
+		if strings.Contains(strings.ToLower(p.Name), query) {
+			found = append(found, p)
+		}
+	}
+	return found
 }
