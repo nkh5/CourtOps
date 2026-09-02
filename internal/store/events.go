@@ -161,6 +161,12 @@ func (s *Store) SetEventState(ctx context.Context, eventID int64, want string) (
 			}
 		}
 
+		if want == EventLive {
+			if _, err := tx.Exec(ctx, `UPDATE event_players SET stayed_whole_event =
+                (checked_in_at IS NOT NULL AND state <> 'left') WHERE event_id = $1`, eventID); err != nil {
+				return fmt.Errorf("record starting attendance: %w", err)
+			}
+		}
 
 		err = tx.QueryRow(ctx, `
 			UPDATE events SET state = $2, updated_at = now(),
