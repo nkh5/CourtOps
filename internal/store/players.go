@@ -130,6 +130,7 @@ func (s *Store) SetPlayerState(ctx context.Context, eventID, playerID int64, wan
 		const q = `
 			UPDATE event_players SET
 				state = $3,
+                stayed_whole_event = stayed_whole_event AND $3 <> 'left',
 				ready_since   = CASE WHEN $3 = 'ready' THEN statement_timestamp() ELSE NULL END,
 				checked_in_at = CASE WHEN $3 = 'ready' THEN COALESCE(checked_in_at, statement_timestamp()) ELSE checked_in_at END
 			WHERE event_id = $1 AND player_id = $2`
