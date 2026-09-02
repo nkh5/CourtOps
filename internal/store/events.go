@@ -161,8 +161,11 @@ func (s *Store) SetEventState(ctx context.Context, eventID int64, want string) (
 			}
 		}
 
+
 		err = tx.QueryRow(ctx, `
-			UPDATE events SET state = $2, updated_at = now()
+			UPDATE events SET state = $2, updated_at = now(),
+                started_at = CASE WHEN $2 = 'live' THEN statement_timestamp() ELSE started_at END,
+                finished_at = CASE WHEN $2 = 'finished' THEN statement_timestamp() ELSE finished_at END
 			WHERE id = $1
 			RETURNING id, title, event_date, state, created_at, updated_at`, eventID, want).
 			Scan(&out.ID, &out.Title, &out.Date, &out.State, &out.CreatedAt, &out.UpdatedAt)
