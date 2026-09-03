@@ -2,10 +2,12 @@ package store
 
 import (
 	"context"
-	"github.com/jackc/pgx/v5"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // ResultPlayer deliberately excludes private identifiers and registration answers.
@@ -156,4 +158,45 @@ type PlayerHistory struct {
 	Matches []Match
 	Events  map[int64]Event
 	HasNext bool
+}
+
+// PlayerHistory exposes only a public identity, current Elo, and recorded games.
+// Pagination bounds both queries even for returning players with years of games.
+func (s *Store) PlayerHistory(ctx context.Context, playerID int64, page int) (PlayerHistory, error) {
+	var out PlayerHistory
+	if page < 1 || page > 100000 {
+		return out, invalid("invalid history page")
+	}
+	err := s.inTxOptions(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `SELECT p.id,p.display_name,p.rating,p.rated_games FROM players p
+   WHERE p.id=$1 AND EXISTS (SELECT 1 FROM event_players ep JOIN events e ON e.id=ep.event_id WHERE ep.player_id=p.id AND e.state='finished')`, playerID).
+			Scan(&out.Player.ID, &out.Player.Name, &out.Player.Rating, &out.Player.RatedGames)
+		if err == pgx.ErrNoRows {
+			return notFound("player results are not available")
+		}
+		if err != nil {
+			return err
+		}
+		out.Matches, err = matchesWhere(ctx, tx, `m.state <> 'active' AND EXISTS (SELECT 1 FROM match_players mp WHERE mp.match_id=m.id AND mp.player_id=$1)
+   ORDER BY m.ended_at DESC,m.id DESC LIMIT 26 OFFSET $2`, playerID, (page-1)*25)
+		if err != nil {
+			return err
+		}
+		out.HasNext = len(out.Matches) > 25
+		if out.HasNext {
+			out.Matches = out.Matches[:25]
+		}
+		out.Events = make(map[int64]Event)
+		for _, m := range out.Matches {
+			if _, ok := out.Events[m.EventID]; !ok {
+				e, err := getEvent(ctx, tx, m.EventID)
+				if err != nil {
+					return fmt.Errorf("history event: %w", err)
+				}
+				out.Events[e.ID] = e
+			}
+		}
+		return nil
+	})
+	return out, err
 }
