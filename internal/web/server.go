@@ -215,6 +215,12 @@ func templateFuncs() template.FuncMap {
 		},
 		"date":   displayDate,
 		"rating": func(v float64) string { return strconv.FormatFloat(v, 'f', 0, 64) },
+		"ratingValue": func(v *float64) string {
+			if v == nil {
+				return "—"
+			}
+			return strconv.FormatFloat(*v, 'f', 0, 64)
+		},
 		"pdelta": func(p store.MatchPlayer) string {
 			d := p.Delta()
 			if d == nil {
