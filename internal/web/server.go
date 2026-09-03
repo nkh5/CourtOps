@@ -170,6 +170,19 @@ func templateFuncs() template.FuncMap {
 		},
 		"add":        func(a, b int) int { return a + b },
 		"eventStats": eventStats,
+		"duration": func(d time.Duration) string {
+			if d <= 0 {
+				return "—"
+			}
+			seconds := int(d.Round(time.Second).Seconds())
+			if seconds >= 3600 {
+				return fmt.Sprintf("%dh %02dm", seconds/3600, seconds%3600/60)
+			}
+			if seconds >= 60 {
+				return fmt.Sprintf("%dm %02ds", seconds/60, seconds%60)
+			}
+			return fmt.Sprintf("%ds", seconds)
+		},
 		"paddle": func(v *bool) string {
 			if v == nil {
 				return "—"
