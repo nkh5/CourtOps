@@ -183,6 +183,12 @@ func templateFuncs() template.FuncMap {
 			}
 			return fmt.Sprintf("%ds", seconds)
 		},
+		"matchDuration": func(m store.Match) string {
+			if m.EndedAt == nil {
+				return "—"
+			}
+			return m.EndedAt.Sub(m.StartedAt).Round(time.Second).String()
+		},
 		"paddle": func(v *bool) string {
 			if v == nil {
 				return "—"
