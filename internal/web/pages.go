@@ -24,6 +24,11 @@ type pageData struct {
 	Version   string
 	Now       time.Time
 
+	Results       *store.EventResults
+	History       *store.PlayerHistory
+	HistoryPage   int
+	Search        string
+	FoundPlayers  []store.ResultPlayer
 	Events        []store.Event
 	Snapshot      *store.Snapshot
 	Import        *importView
@@ -173,6 +178,7 @@ func (s *Server) handleBoard(w http.ResponseWriter, r *http.Request) {
 		s.storeError(w, r, err)
 		return
 	}
+
 
 	data := s.newPage(w, r, snap.Event.Title+" — court board")
 	data.Snapshot = &snap
