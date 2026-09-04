@@ -11,4 +11,21 @@
  <div><dt>Stayed Till the End</dt><dd>{{$r.AtEnd}}</dd></div>
  <div><dt>Event Length</dt><dd>{{if $r.LengthRecorded}}{{duration $r.Length}}{{else}}<span>Not recorded</span>{{end}}</dd></div>
 </dl>
+<section class="final-standings">
+ <div class="page-heading"><h2>Podium</h2></div>
+ {{if $r.Leaders}}
+ <div class="podium" aria-label="Top three places">
+ {{range $r.Leaders}}{{if le .Rank 3}}
+  <article class="podium-place podium-place-{{.Rank}}">
+   <h3><a href="/players/{{.ID}}">{{.Name}}</a></h3>
+   <div class="podium-step">
+    <span class="podium-medal" aria-label="Place {{.Rank}}">{{.Rank}}</span>
+    <p class="podium-wins">{{.Wins}} <span>wins</span></p>
+    <p class="podium-games">{{.Games}} games played</p>
+   </div>
+  </article>
+ {{end}}{{end}}
+ </div>
+ {{else}}<p class="empty">No completed games were recorded, so there are no standings yet.</p>{{end}}
+</section>
 {{template "foot" .}}
