@@ -26,6 +26,11 @@
   </article>
  {{end}}{{end}}
  </div>
+ <div class="table-scroll"><table class="table standings-table">
+ <thead><tr><th scope="col">Place</th><th scope="col">Player</th><th scope="col">Wins</th><th scope="col">Played</th><th scope="col">Win rate</th></tr></thead>
+ <tbody>{{range $r.Leaders}}<tr><td>{{.Rank}}</td><td><a href="/players/{{.ID}}">{{.Name}}</a></td><td>{{.Wins}}</td><td>{{.Games}}</td><td>{{.WinRate}}%</td></tr>{{end}}</tbody>
+ </table></div>
+ <p class="help">Ranked by wins, win rate, Elo, then earliest check-in.</p>
  {{else}}<p class="empty">No completed games were recorded, so there are no standings yet.</p>{{end}}
 </section>
 {{template "foot" .}}
