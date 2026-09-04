@@ -26,6 +26,9 @@
   </article>
  {{end}}{{end}}
  </div>
+ <div class="runners-up" aria-label="Runners-up">
+ {{range $r.Leaders}}{{if gt .Rank 3}}<a href="/players/{{.ID}}"><span class="runner-rank">{{.Rank}}</span>{{.Name}}</a>{{end}}{{end}}
+ </div>
  <div class="table-scroll"><table class="table standings-table">
  <thead><tr><th scope="col">Place</th><th scope="col">Player</th><th scope="col">Wins</th><th scope="col">Played</th><th scope="col">Win rate</th></tr></thead>
  <tbody>{{range $r.Leaders}}<tr><td>{{.Rank}}</td><td><a href="/players/{{.ID}}">{{.Name}}</a></td><td>{{.Wins}}</td><td>{{.Games}}</td><td>{{.WinRate}}%</td></tr>{{end}}</tbody>
