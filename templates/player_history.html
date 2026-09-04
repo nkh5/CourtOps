@@ -1,0 +1,12 @@
+{{template "head" .}}
+{{$h := .History}}
+<div class="board-head">
+ <p><a href="/">← Events</a></p>
+ <h1>{{$h.Player.Name}}</h1>
+ <p class="sub">Player #{{$h.Player.ID}}</p>
+</div>
+<dl class="event-stats player-rating">
+ <div><dt>Current Elo</dt><dd>{{if $h.Player.RatedGames}}{{rating $h.Player.Rating}}{{else}}<span>Unrated</span>{{end}}</dd></div>
+ <div><dt>Rated games</dt><dd>{{$h.Player.RatedGames}}</dd></div>
+</dl>
+{{template "foot" .}}
