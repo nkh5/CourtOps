@@ -36,4 +36,16 @@
  <p class="help">Ranked by wins, win rate, Elo, then earliest check-in.</p>
  {{else}}<p class="empty">No completed games were recorded, so there are no standings yet.</p>{{end}}
 </section>
+<section class="player-lookup" id="players">
+ <h2>Find Your Results</h2>
+ <p class="muted">Search this event’s roster by display name to see current Elo and match history.</p>
+ <form method="get" action="/results/{{$r.Event.ID}}#players" class="row search-form" role="search">
+  <label class="field" for="player-search">Player name<input type="search" id="player-search" name="q" value="{{.Search}}" maxlength="100" placeholder="Enter a display name"></label>
+  <button class="button button-primary" type="submit">Find Player</button>
+ </form>
+ <div class="table-scroll"><table class="table">
+ <thead><tr><th scope="col">Player</th><th scope="col">Current Elo</th><th scope="col">History</th></tr></thead>
+ <tbody>{{range .FoundPlayers}}<tr><td>{{.Name}} <span class="meta">#{{.ID}}</span></td><td>{{if .RatedGames}}{{rating .Rating}}{{else}}Unrated{{end}}</td><td><a href="/players/{{.ID}}">View matches</a></td></tr>{{else}}<tr><td colspan="3">No players found{{if .Search}} for “{{.Search}}”{{end}}.</td></tr>{{end}}</tbody>
+ </table></div>
+</section>
 {{template "foot" .}}
