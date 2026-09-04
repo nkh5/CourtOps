@@ -1,0 +1,14 @@
+{{template "head" .}}
+{{$r := .Results}}
+<div class="board-head results-heading">
+  <p class="eyebrow">Results</p>
+  <h1>{{$r.Event.Title}}</h1>
+  <p class="sub">{{date $r.Event.Date}} <span class="date-divider" aria-hidden="true">/</span> {{template "statepill" $r.Event.State}}</p>
+</div>
+<dl class="event-stats recap-stats" aria-label="Event summary">
+ <div><dt>Matches Played</dt><dd>{{$r.Completed}}</dd></div>
+ <div><dt>Total Players</dt><dd>{{$r.Arrived}} <span class="stat-denominator">/ {{$r.Registered}}</span></dd><span class="stat-caption">registered players</span></div>
+ <div><dt>Stayed Till the End</dt><dd>{{$r.AtEnd}}</dd></div>
+ <div><dt>Event Length</dt><dd>{{if $r.LengthRecorded}}{{duration $r.Length}}{{else}}<span>Not recorded</span>{{end}}</dd></div>
+</dl>
+{{template "foot" .}}
