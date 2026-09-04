@@ -48,4 +48,11 @@
  <tbody>{{range .FoundPlayers}}<tr><td>{{.Name}} <span class="meta">#{{.ID}}</span></td><td>{{if .RatedGames}}{{rating .Rating}}{{else}}Unrated{{end}}</td><td><a href="/players/{{.ID}}">View matches</a></td></tr>{{else}}<tr><td colspan="3">No players found{{if .Search}} for “{{.Search}}”{{end}}.</td></tr>{{end}}</tbody>
  </table></div>
 </section>
+<section class="board-results">
+ <h2>All Match Results</h2>
+ <ul class="results">{{range $r.Matches}}<li{{if eq .State "cancelled"}} class="match-cancelled"{{end}}>
+  <div class="row"><span class="court-tag">{{.CourtLabel}}</span><span class="meta">Match #{{.ID}} · {{matchDuration .}}</span>{{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}</div>
+  {{template "matchteams" .}}
+ </li>{{else}}<li>No matches were recorded for this event.</li>{{end}}</ul>
+</section>
 {{template "foot" .}}
