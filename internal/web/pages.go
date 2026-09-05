@@ -179,6 +179,14 @@ func (s *Server) handleBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if snap.Event.State == store.EventFinished {
+		if r.URL.Query().Get("fragment") == "1" {
+			w.Header().Set("X-CourtOps-Results", fmt.Sprintf("/results/%d", eventID))
+		} else {
+			http.Redirect(w, r, fmt.Sprintf("/results/%d", eventID), http.StatusSeeOther)
+			return
+		}
+	}
 
 	data := s.newPage(w, r, snap.Event.Title+" — court board")
 	data.Snapshot = &snap
