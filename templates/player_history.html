@@ -9,4 +9,14 @@
  <div><dt>Current Elo</dt><dd>{{if $h.Player.RatedGames}}{{rating $h.Player.Rating}}{{else}}<span>Unrated</span>{{end}}</dd></div>
  <div><dt>Rated games</dt><dd>{{$h.Player.RatedGames}}</dd></div>
 </dl>
+<section class="board-results">
+ <h2>Match History</h2>
+ <ul class="results">{{range $h.Matches}}{{$e := index $h.Events .EventID}}
+ <li{{if eq .State "cancelled"}} class="match-cancelled"{{end}}>
+  <div class="page-heading"><h3>{{if eq $e.State "finished"}}<a href="/results/{{$e.ID}}">{{$e.Title}}</a>{{else}}<a href="/board/{{$e.ID}}">{{$e.Title}}</a>{{end}}</h3><span class="meta">{{date $e.Date}}</span></div>
+  <div class="row"><span class="court-tag">{{.CourtLabel}}</span><span class="meta">Match #{{.ID}} · {{matchDuration .}}</span>{{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}</div>
+  {{template "matchteams" .}}
+  {{range .Players}}{{if eq .PlayerID $h.Player.ID}}{{if .RatingAfter}}<p class="meta">Your Elo after this game: {{ratingValue .RatingAfter}} ({{pdelta .}})</p>{{else}}<p class="meta">No Elo change recorded for this game.</p>{{end}}{{end}}{{end}}
+ </li>{{else}}<li>No completed or cancelled matches to show.</li>{{end}}</ul>
+</section>
 {{template "foot" .}}
