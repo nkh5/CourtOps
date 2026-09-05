@@ -35,6 +35,7 @@
       signal: controller.signal
     })
       .then(function (response) {
+        if (response.headers.get("X-CourtOps-Results")) { window.location.assign("/results/" + encodeURIComponent(eventID)); return ""; }
         if (!response.ok) throw new Error("status " + response.status);
         return response.text();
       })
