@@ -18,5 +18,10 @@
   {{template "matchteams" .}}
   {{range .Players}}{{if eq .PlayerID $h.Player.ID}}{{if .RatingAfter}}<p class="meta">Your Elo after this game: {{ratingValue .RatingAfter}} ({{pdelta .}})</p>{{else}}<p class="meta">No Elo change recorded for this game.</p>{{end}}{{end}}{{end}}
  </li>{{else}}<li>No completed or cancelled matches to show.</li>{{end}}</ul>
+ <nav class="row history-pagination" aria-label="Match history pages">
+ {{if gt .HistoryPage 1}}<a class="button" href="/players/{{$h.Player.ID}}?page={{add .HistoryPage -1}}">Newer matches</a>{{end}}
+ <span class="meta">Page {{.HistoryPage}}</span>
+ {{if $h.HasNext}}<a class="button" href="/players/{{$h.Player.ID}}?page={{add .HistoryPage 1}}">Older matches</a>{{end}}
+ </nav>
 </section>
 {{template "foot" .}}
