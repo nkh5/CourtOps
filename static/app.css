@@ -253,3 +253,14 @@ fieldset { margin: 0; border: 1px solid var(--line); border-radius: 3px; padding
 .recap-stats dd span { font-size: .95rem; }
 .stat-caption { margin-top: .5rem; font-size: .75rem; color: var(--ink-soft); }
 .final-standings, .player-lookup { margin: 2.8rem 0; }
+.podium { display: flex; justify-content: center; align-items: flex-end; gap: .8rem; margin: 2rem 0 0; padding: 1.5rem 1.5rem 0; background: #f2f6fc; border-radius: 12px 12px 0 0; flex-wrap: wrap; }
+.podium-place { flex: 1 1 160px; min-width: 0; max-width: 330px; text-align: center; }
+.podium-place:first-child { order: 2; }
+.podium-place:nth-child(2) { order: 1; }
+.podium-place:nth-child(n+3) { order: 3; }
+.podium-place h3 { margin: 0 0 1rem; font: 700 clamp(.95rem, 2vw, 1.4rem)/1.3 system-ui, sans-serif; }
+.podium-place h3 a { text-decoration: none; }
+.podium-place h3 a:hover { text-decoration: underline; }
+.podium-step { position: relative; min-height: 220px; padding: 1.6rem .65rem 2rem; color: white; background: #365f98; border-radius: 8px 8px 0 0; box-shadow: inset 0 -8px 0 #00000012; }
+.podium-place-1 .podium-step { min-height: 285px; background: #142b4b; }
+.podium-place-3 .podium-step { min-height: 180px; background: #4b72a8; }
