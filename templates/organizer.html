@@ -1,4 +1,5 @@
 {{template "head" .}}
+{{if eq .Snapshot.Event.State "finished"}}<p><a class="button button-primary" href="/results/{{.Snapshot.Event.ID}}">View Results</a></p>{{end}}
 {{$s := .Snapshot}}{{$csrf := .CSRF}}{{$now := $s.FetchedAt}}
 {{$editable := and (ne $s.Event.State "finished") (not .ReadOnly)}}
 <div class="event-head">
