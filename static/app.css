@@ -243,3 +243,13 @@ fieldset { margin: 0; border: 1px solid var(--line); border-radius: 3px; padding
 .results > .match-cancelled, .board-results .results > .match-cancelled { color: var(--ink-soft); background: #f5f6f8; }
 .match-cancelled .teams li, .board-results .match-cancelled .teams li { background: #f0f2f5; color: var(--ink-soft); }
 .results .team-winner li { border-bottom: 1px solid var(--line); }
+
+/* Finished-event results and blue-and-white winners' podium. */
+.results-heading .eyebrow { font-size: .78rem; letter-spacing: .15em; margin-bottom: .6rem; }
+.event-stats.recap-stats { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 2.5rem; }
+.recap-stats > div { padding: 1.3rem 1.4rem; display: flex; flex-direction: column; align-items: flex-start; }
+.recap-stats dt { font-size: .85rem; min-height: 2.8em; line-height: 1.4; margin: 0 0 .6rem; }
+.recap-stats dd { display: flex; align-items: baseline; gap: .4rem; margin: 0; font-size: clamp(1.65rem, 3vw, 2.4rem); line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.recap-stats dd span { font-size: .95rem; }
+.stat-caption { margin-top: .5rem; font-size: .75rem; color: var(--ink-soft); }
+.final-standings, .player-lookup { margin: 2.8rem 0; }
