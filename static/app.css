@@ -274,3 +274,7 @@ fieldset { margin: 0; border: 1px solid var(--line); border-radius: 3px; padding
 .runners-up a { display: inline-flex; align-items: center; gap: .6rem; padding: .45rem .9rem .45rem .45rem; background: white; border-radius: 6px; font-weight: 600; text-decoration: none; }
 .runner-rank { display: grid; place-items: center; width: 30px; height: 30px; border: 2px solid #a4b9d8; border-radius: 50%; }
 .standings-table td:first-child { font-weight: 700; }
+.search-form { align-items: flex-end; margin: 1.2rem 0; }
+.search-form .field { flex: 1; max-width: 460px; margin: 0; }
+.player-rating { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.history-pagination { justify-content: center; margin-top: 1.4rem; }
