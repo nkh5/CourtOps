@@ -55,4 +55,5 @@
   {{template "matchteams" .}}
  </li>{{else}}<li>No matches were recorded for this event.</li>{{end}}</ul>
 </section>
+{{if and $r.Leaders (not .Search)}}<script src="/static/results.js" defer></script>{{end}}
 {{template "foot" .}}
