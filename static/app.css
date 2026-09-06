@@ -269,3 +269,8 @@ fieldset { margin: 0; border: 1px solid var(--line); border-radius: 3px; padding
 .podium-wins { margin: 0; font-size: 1.8rem; font-weight: 750; line-height: 1.2; }
 .podium-wins span { font-size: 1rem; font-weight: 500; }
 .podium-games { margin: .5rem 0 0; font-size: .85rem; color: #e6efff; }
+.runners-up { display: flex; flex-wrap: wrap; gap: .7rem; justify-content: center; padding: 1rem; background: #e7eef8; border-radius: 0 0 12px 12px; margin-bottom: 1.5rem; }
+.runners-up:empty { padding: .4rem; }
+.runners-up a { display: inline-flex; align-items: center; gap: .6rem; padding: .45rem .9rem .45rem .45rem; background: white; border-radius: 6px; font-weight: 600; text-decoration: none; }
+.runner-rank { display: grid; place-items: center; width: 30px; height: 30px; border: 2px solid #a4b9d8; border-radius: 50%; }
+.standings-table td:first-child { font-weight: 700; }
