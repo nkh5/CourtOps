@@ -264,3 +264,8 @@ fieldset { margin: 0; border: 1px solid var(--line); border-radius: 3px; padding
 .podium-step { position: relative; min-height: 220px; padding: 1.6rem .65rem 2rem; color: white; background: #365f98; border-radius: 8px 8px 0 0; box-shadow: inset 0 -8px 0 #00000012; }
 .podium-place-1 .podium-step { min-height: 285px; background: #142b4b; }
 .podium-place-3 .podium-step { min-height: 180px; background: #4b72a8; }
+.podium-medal { position: relative; display: grid; place-items: center; width: 76px; height: 76px; margin: 0 auto 1.1rem; border: 5px solid #bad2f6; border-radius: 50%; background: white; color: #142b4b; font: 800 2.3rem/1 system-ui, sans-serif; box-shadow: 0 4px 0 #00000018; }
+.podium-medal::before { content: ""; position: absolute; width: 40px; height: 23px; top: -26px; background: #82b4f4; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.podium-wins { margin: 0; font-size: 1.8rem; font-weight: 750; line-height: 1.2; }
+.podium-wins span { font-size: 1rem; font-weight: 500; }
+.podium-games { margin: .5rem 0 0; font-size: .85rem; color: #e6efff; }
