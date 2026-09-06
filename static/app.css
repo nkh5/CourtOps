@@ -278,3 +278,20 @@ fieldset { margin: 0; border: 1px solid var(--line); border-radius: 3px; padding
 .search-form .field { flex: 1; max-width: 460px; margin: 0; }
 .player-rating { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .history-pagination { justify-content: center; margin-top: 1.4rem; }
+@media (max-width: 760px) {
+ .event-stats.recap-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ .recap-stats > div { padding: 1rem; }
+ .recap-stats > div:nth-child(2) { border-right: 0; }
+ .recap-stats > div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+ .podium { gap: .35rem; padding: 1rem .4rem 0; flex-wrap: nowrap; }
+ .podium-place { flex: 1 1 0; }
+ .podium-place h3 { font-size: .82rem; margin-bottom: .65rem; }
+ .podium-step { min-height: 185px; padding: 1.5rem .3rem 1rem; }
+ .podium-place-1 .podium-step { min-height: 230px; }
+ .podium-place-3 .podium-step { min-height: 160px; }
+ .podium-medal { width: 54px; height: 54px; font-size: 1.65rem; border-width: 4px; }
+ .podium-wins { font-size: 1.5rem; }
+ .podium-wins span, .podium-games { font-size: .7rem; }
+ .podium:has(.podium-place:nth-child(4)) { flex-wrap: wrap; }
+ .podium:has(.podium-place:nth-child(4)) .podium-place { flex-basis: 40%; }
+}
