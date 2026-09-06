@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -119,3 +120,85 @@ func TestResultsAttendanceRankingsAndFullHistory(t *testing.T) {
 	}
 }
 
+func TestResultsEmptyAndTiedStandings(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	e := liveEvent(t, st, []string{"Court 1", "Court 2"}, entries(8, 1000)...)
+	checkInAll(t, st, e.ID)
+	var winners []int64
+	for _, court := range courtIDs(t, st, e.ID) {
+		m, _, err := st.AssignNext(ctx, e.ID, court)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err = st.CompleteMatch(ctx, e.ID, m.ID, 1); err != nil {
+			t.Fatal(err)
+		}
+		for _, p := range m.Team(1) {
+			winners = append(winners, p.PlayerID)
+		}
+	}
+	if _, err := st.SetEventState(ctx, e.ID, store.EventFinished); err != nil {
+		t.Fatal(err)
+	}
+	r, err := st.Results(ctx, e.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Leaders) != 5 {
+		t.Fatalf("expected exactly five unique places, got %d", len(r.Leaders))
+	}
+	for i, p := range r.Leaders {
+		if p.Rank != i+1 {
+			t.Fatalf("non-unique rank: %+v", r.Leaders)
+		}
+	}
+	// With equal wins, win rate and Elo, later-created identities that
+	// checked in earlier must beat alphabetic/name or ID ordering.
+	if _, err = st.Pool().Exec(ctx, `UPDATE event_players SET checked_in_at =
+        '2026-10-19 12:00:00+00'::timestamptz - player_id * interval '1 minute'
+        WHERE event_id=$1`, e.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = st.Pool().Exec(ctx, `UPDATE events SET started_at='2026-10-19 12:00:00+00',
+        finished_at='2026-10-19 14:17:00+00' WHERE id=$1`, e.ID); err != nil {
+		t.Fatal(err)
+	}
+	r, err = st.Results(ctx, e.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.LengthRecorded || r.Length != 2*time.Hour+17*time.Minute {
+		t.Fatalf("event length: %v, recorded=%v", r.Length, r.LengthRecorded)
+	}
+	sort.Slice(winners, func(i, j int) bool { return winners[i] > winners[j] })
+	for i, id := range winners {
+		if r.Leaders[i].ID != id {
+			t.Fatalf("check-in tiebreak: place %d got player %d, want %d", i+1, r.Leaders[i].ID, id)
+		}
+	}
+	// Elo precedes arrival order when the match records are equal.
+	boosted := winners[len(winners)-1]
+	if _, err = st.Pool().Exec(ctx, `UPDATE players SET rating=1200 WHERE id=$1`, boosted); err != nil {
+		t.Fatal(err)
+	}
+	r, err = st.Results(ctx, e.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Leaders[0].ID != boosted {
+		t.Fatal("higher Elo did not break the tied record")
+	}
+
+	empty, err := st.CreateEvent(ctx, "Empty", time.Now(), []string{"Court"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = st.SetEventState(ctx, empty.ID, store.EventFinished); err != nil {
+		t.Fatal(err)
+	}
+	r, err = st.Results(ctx, empty.ID)
+	if err != nil || len(r.Leaders) != 0 || r.Completed != 0 || r.AttendanceRecorded {
+		t.Fatalf("empty results: %+v %v", r, err)
+	}
+}
