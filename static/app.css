@@ -278,6 +278,9 @@ fieldset { margin: 0; border: 1px solid var(--line); border-radius: 3px; padding
 .search-form .field { flex: 1; max-width: 460px; margin: 0; }
 .player-rating { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .history-pagination { justify-content: center; margin-top: 1.4rem; }
+.results-confetti { position: fixed; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; }
+.results-confetti i { position: absolute; top: -20px; left: var(--x); width: 7px; height: 12px; background: var(--color); animation: confetti-fall var(--duration) var(--delay) ease-in forwards; }
+@keyframes confetti-fall { to { transform: translate(var(--drift), 105vh) rotate(var(--spin)); opacity: 0; } }
 @media (max-width: 760px) {
  .event-stats.recap-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
  .recap-stats > div { padding: 1rem; }
@@ -295,3 +298,4 @@ fieldset { margin: 0; border: 1px solid var(--line); border-radius: 3px; padding
  .podium:has(.podium-place:nth-child(4)) { flex-wrap: wrap; }
  .podium:has(.podium-place:nth-child(4)) .podium-place { flex-basis: 40%; }
 }
+@media (prefers-reduced-motion: reduce) { .results-confetti { display: none; } }
