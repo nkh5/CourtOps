@@ -28,6 +28,13 @@ is what keeps the whole thing explainable.
   the most balanced of the three possible doubles pairings.
 - **Record results** with an explicit confirmation, and optionally apply a
   provisional local Elo rating in the same transaction.
+- **Publish finished-event results** with a top-three podium, top-five standings,
+  attendance totals, completed-match counts, and event length. Standings use wins,
+  win rate, Elo, then earliest check-in, with player ID as the final fallback;
+  cancelled games do not count.
+- **Look up players** by public display name from event results to see current Elo
+  and paginated match history across events. Players without rated games show
+  as Unrated. Email/club IDs and registration answers remain private.
 - **Show a public board** that polls every five seconds and says so when it is
   showing stale data.
 
