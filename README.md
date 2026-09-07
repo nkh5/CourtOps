@@ -200,6 +200,14 @@ from a self-reported band (beginner 800, intermediate 1000, advanced 1200). The
 ratings are off by default (`COURTOPS_RATINGS=false`) so a first pilot cannot
 bake bad numbers into player history.
 
+Migration `0004_event_results.sql` starts tracking event start/finish times and
+uninterrupted attendance. Older events show “Not recorded” for event length.
+Event length runs from the organizer starting the event to finishing it.
+“Stayed Till the End” counts checked-in players who were not marked Left at
+finish, including late arrivals. Match durations depend on when the organizer
+starts and records each game. Finished boards redirect to
+`/results/{eventID}`; public player history is at `/players/{playerID}`.
+
 ### Privacy by construction
 
 The board is public, so the read model it is built from — `store.EventPlayer` —
