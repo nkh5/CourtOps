@@ -29,8 +29,7 @@ jobs:
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
-            --document-name AWS-RunShellScript \
-            --parameters '{"commands":["whoami","hostname","echo SSM_CONNECTION_SUCCESS"]}' \
+            --document-name CourtOps-Preflight \
             --query 'Command.CommandId' \
             --output text)
 
