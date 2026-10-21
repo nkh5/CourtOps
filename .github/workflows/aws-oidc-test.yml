@@ -1,0 +1,28 @@
+
+name: AWS OIDC Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-aws-auth:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: courtops-oidc-test
+          allowed-account-ids: "563384362525"
+
+      - name: Verify AWS identity
+        run: |
+          aws sts get-caller-identity
+          echo "AWS OIDC authentication succeeded"
