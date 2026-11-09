@@ -28,7 +28,7 @@
 </div></header>
 <main id="main">
 {{if .Notice}}<p class="banner banner-ok" role="status">{{.Notice}}</p>{{end}}
-{{if .Problem}}<p class="banner banner-problem" role="alert">{{.Problem}}</p>{{end}}
+{{if .Problem}}<p class="banner banner-problem" role="alert">{{.Problem | title}}</p>{{end}}
 {{end}}
 
 {{define "foot"}}

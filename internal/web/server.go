@@ -13,8 +13,9 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/nicholashu/courtops/internal/config"
 	"github.com/nicholashu/courtops/internal/store"
@@ -153,6 +154,12 @@ func templateFuncs() template.FuncMap {
 			if d < time.Minute {
 				return fmt.Sprintf("%ds", int(d.Seconds()))
 			}
+			if d >= 24*time.Hour {
+				return fmt.Sprintf("%dd %dh", int(d.Hours())/24, int(d.Hours())%24)
+			}
+			if d >= time.Hour {
+				return fmt.Sprintf("%dh %02dm", int(d.Hours()), int(d.Minutes())%60)
+			}
 			return fmt.Sprintf("%dm %02ds", int(d.Minutes()), int(d.Seconds())%60)
 		},
 		// clock accepts time.Time or *time.Time so templates can print an
@@ -240,7 +247,8 @@ func templateFuncs() template.FuncMap {
 			if s == "" {
 				return ""
 			}
-			return strings.ToUpper(s[:1]) + s[1:]
+			first, size := utf8.DecodeRuneInString(s)
+			return string(unicode.ToUpper(first)) + s[size:]
 		},
 		"teamOf": func(m store.Match, n int) []store.MatchPlayer { return m.Team(n) },
 	}
