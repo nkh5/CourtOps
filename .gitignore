@@ -43,3 +43,7 @@ deploy/.env.before-*
 deploy/release.env*
 deploy/previous-image.txt
 /previous-image.txt
+
+# Local design notes; README is the project's published documentation.
+/PRODUCT.md
+/DESIGN.md
