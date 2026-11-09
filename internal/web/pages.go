@@ -29,7 +29,7 @@ type pageData struct {
 	HistoryPage   int
 	Search        string
 	FoundPlayers  []store.ResultPlayer
-	Events        []store.Event
+	EventGroups   []eventGroup
 	Snapshot      *store.Snapshot
 	Import        *importView
 	Match         *store.Match
@@ -79,6 +79,11 @@ func (s *Server) renderError(w http.ResponseWriter, r *http.Request, status int,
 	s.render(w, r, status, "error.html", data)
 }
 
+type eventGroup struct {
+	State, Label string
+	Events       []store.Event
+}
+
 // handleIndex lists events and, for an organizer, offers to create one.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -92,8 +97,17 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := s.newPage(w, r, "CourtOps")
-	data.Events = events
+	data := s.newPage(w, r, "Events")
+	for _, group := range []eventGroup{{State: store.EventLive, Label: "In play"}, {State: store.EventSetup, Label: "In setup"}, {State: store.EventFinished, Label: "Finished"}} {
+		for _, event := range events {
+			if event.State == group.State {
+				group.Events = append(group.Events, event)
+			}
+		}
+		if len(group.Events) > 0 {
+			data.EventGroups = append(data.EventGroups, group)
+		}
+	}
 	if r.URL.Query().Get("signin") == "not-organizer" {
 		data.Problem = "You are signed in to Google, but this account is not an organizer for this deployment. You can still view events and public court boards."
 	}
