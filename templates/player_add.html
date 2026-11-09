@@ -2,8 +2,7 @@
 {{$s := .Snapshot}}
 <a class="back-link" href="/events/{{$s.Event.ID}}">← Back to {{$s.Event.Title}}</a>
 <section class="card form-card">
-  <div class="section-head"><div><p class="eyebrow">{{$s.Event.Title}}</p><h1>Add Player</h1></div>{{template "statepill" $s.Event.State}}</div>
-  <p class="lede">Someone just arrived? Add them to this event and check them in when they’re ready to play.</p>
+  <div class="section-head"><div><h1>Add Player</h1></div>{{template "statepill" $s.Event.State}}</div>
   <form method="post" action="/events/{{$s.Event.ID}}/players" class="stack form-grid">
     <input type="hidden" name="csrf_token" value="{{.CSRF}}">
     <div class="field"><label for="display_name">Display name</label><input id="display_name" name="display_name" maxlength="80" autocomplete="name" required placeholder="Name shown on the court board"></div>
