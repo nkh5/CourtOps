@@ -52,14 +52,24 @@ var splits = [3][4]int{
 	{0, 3, 1, 2},
 }
 
-// SelectNext picks the four longest-waiting candidates and returns the most
-// balanced of the three possible team splits.
-//
-// Waiting order wins over balance on purpose: a player is never skipped to make
-// the teams closer. Balance only decides how the four are paired up.
-//
-// Cost is the O(n log n) sort plus three fixed comparisons.
-func SelectNext(candidates []Candidate) (Assignment, error) {
+// WaitWindow is measured from the oldest remaining ready player at each pick.
+const WaitWindow = 7 * time.Minute
+
+// History counts completed games in this event for pairs of players.
+// Keys contain the lower ID first. Cancelled matches do not count.
+type Meetings struct{ Shared, Partners int }
+type History map[[2]int64]Meetings
+
+func (h History) between(a, b int64) Meetings {
+	if a > b {
+		a, b = b, a
+	}
+	return h[[2]int64{a, b}]
+}
+
+// SelectNext guarantees the oldest player a place. For the remaining places,
+// similar waits favor players with fewer shared games with those already picked.
+func SelectNext(candidates []Candidate, history History) (Assignment, error) {
 	if len(candidates) < PlayersPerMatch {
 		return Assignment{}, ErrNotEnoughPlayers
 	}
@@ -71,18 +81,39 @@ func SelectNext(candidates []Candidate) (Assignment, error) {
 	})
 
 	var four [4]Candidate
-	copy(four[:], queue[:PlayersPerMatch])
+	for slot := range four {
+		// The first pick has no prior players to compare, so FIFO wins.
+		cutoff := queue[0].ReadySince.Add(WaitWindow)
+		bestIndex, bestShared := 0, math.MaxInt
+		for i, candidate := range queue {
+			if candidate.ReadySince.After(cutoff) {
+				break
+			}
+			shared := 0
+			for _, picked := range four[:slot] {
+				shared += history.between(candidate.PlayerID, picked.PlayerID).Shared
+			}
+			if shared < bestShared {
+				bestIndex, bestShared = i, shared
+				if shared == 0 {
+					break
+				}
+			}
+		}
+		four[slot] = queue[bestIndex]
+		queue = append(queue[:bestIndex], queue[bestIndex+1:]...)
+	}
 
 	best := Assignment{}
-	bestGap := math.Inf(1)
+	bestGap, bestPartners := math.Inf(1), math.MaxInt
 	for _, split := range splits {
 		a := [2]Candidate{four[split[0]], four[split[1]]}
 		b := [2]Candidate{four[split[2]], four[split[3]]}
 		gap := math.Abs(average(a) - average(b))
-		// Strictly less: on a tie the earlier split in the fixed order wins,
-		// so the same four players always produce the same teams.
-		if gap < bestGap {
-			bestGap = gap
+		partners := history.between(a[0].PlayerID, a[1].PlayerID).Partners +
+			history.between(b[0].PlayerID, b[1].PlayerID).Partners
+		if gap < bestGap || (gap == bestGap && partners < bestPartners) {
+			bestGap, bestPartners = gap, partners
 			best = Assignment{TeamA: a, TeamB: b, Gap: gap}
 		}
 	}

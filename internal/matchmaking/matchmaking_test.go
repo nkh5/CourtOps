@@ -103,7 +103,7 @@ func TestSelectNext(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := SelectNext(tt.candidates)
+			got, err := SelectNext(tt.candidates, nil)
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("SelectNext() error = %v, want %v", err, tt.wantErr)
@@ -144,7 +144,7 @@ func assertSameSet(t *testing.T, got, want [4]int64) {
 // This test documents that the function has no other notion of eligibility.
 func TestSelectNextUsesOnlyWhatItIsGiven(t *testing.T) {
 	eligible := []Candidate{cand(1, 1000, 0), cand(2, 1000, 1), cand(3, 1000, 2), cand(4, 1000, 3)}
-	got, err := SelectNext(eligible)
+	got, err := SelectNext(eligible, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestSelectNextUsesOnlyWhatItIsGiven(t *testing.T) {
 func TestSelectNextDoesNotMutateInput(t *testing.T) {
 	in := []Candidate{cand(4, 1000, 3), cand(1, 1000, 0), cand(3, 1000, 2), cand(2, 1000, 1)}
 	before := append([]Candidate(nil), in...)
-	if _, err := SelectNext(in); err != nil {
+	if _, err := SelectNext(in, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	for i := range in {
@@ -168,12 +168,12 @@ func TestSelectNextDoesNotMutateInput(t *testing.T) {
 
 func TestSelectNextIsDeterministic(t *testing.T) {
 	in := []Candidate{cand(1, 1150, 0), cand(2, 990, 1), cand(3, 1010, 2), cand(4, 1200, 3), cand(5, 800, 4)}
-	first, err := SelectNext(in)
+	first, err := SelectNext(in, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	for i := 0; i < 50; i++ {
-		got, err := SelectNext(in)
+		got, err := SelectNext(in, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -196,8 +196,47 @@ func benchmarkSelectNext(b *testing.B, n int) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := SelectNext(in); err != nil {
+		if _, err := SelectNext(in, nil); err != nil {
 			b.Fatal(err)
+		}
+	}
+}
+
+func TestRotationWindowBoundary(t *testing.T) {
+	// Four people have just finished together. A fifth can break up a rematch
+	// only if they are ready within the inclusive window.
+	history := History{}
+	for a := int64(1); a <= 4; a++ {
+		for b := a + 1; b <= 4; b++ {
+			history[[2]int64{a, b}] = Meetings{Shared: 1}
+		}
+	}
+	for _, tc := range []struct {
+		delay time.Duration
+		want  [4]int64
+	}{
+		{WaitWindow, [4]int64{1, 2, 3, 5}},
+		{WaitWindow + time.Microsecond, [4]int64{1, 2, 3, 4}},
+	} {
+		in := []Candidate{cand(1, 1000, 0), cand(2, 1000, 0), cand(3, 1000, 0), cand(4, 1000, 0), cand(5, 1000, 0)}
+		in[4].ReadySince = base.Add(tc.delay)
+		got, err := SelectNext(in, history)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertSameSet(t, ids(got), tc.want)
+	}
+}
+
+func TestEqualBalanceRotatesPartners(t *testing.T) {
+	history := History{[2]int64{1, 2}: {Shared: 1, Partners: 1}, [2]int64{3, 4}: {Shared: 1, Partners: 1}}
+	got, err := SelectNext([]Candidate{cand(1, 1000, 0), cand(2, 1000, 0), cand(3, 1000, 0), cand(4, 1000, 0)}, history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, team := range [][2]Candidate{got.TeamA, got.TeamB} {
+		if history.between(team[0].PlayerID, team[1].PlayerID).Partners > 0 {
+			t.Fatalf("repeated partners: %v", ids(got))
 		}
 	}
 }

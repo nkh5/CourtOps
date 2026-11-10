@@ -11,7 +11,7 @@ import (
 	"github.com/nicholashu/courtops/internal/ratings"
 )
 
-// AssignNext puts the four longest-waiting ready players on a court.
+// AssignNext puts the next group of ready players on a court.
 //
 // created is false when the court already had a live match. That is the whole
 // idempotency story for this button: an organizer who presses "Next match"
@@ -52,7 +52,7 @@ func (s *Store) AssignNext(ctx context.Context, eventID, courtID int64) (match M
 			return err
 		}
 
-		assignment, err := matchmaking.SelectNext(candidates)
+		assignment, err := nextAssignment(ctx, tx, eventID, candidates)
 		if errors.Is(err, matchmaking.ErrNotEnoughPlayers) {
 			return precondition("only %d player(s) are ready; a doubles match needs %d",
 				len(candidates), matchmaking.PlayersPerMatch)
@@ -305,6 +305,43 @@ func releasePlayers(ctx context.Context, tx pgx.Tx, eventID int64, m Match) erro
 
 // readyCandidates reads the queue inside the transaction that holds the event
 // lock, so the matcher sees the state it is about to act on.
+// Assignment and the board preview use the same event-scoped history, inside
+// their respective transactions. Only completed games between ready players matter.
+func nextAssignment(ctx context.Context, tx pgx.Tx, eventID int64, candidates []matchmaking.Candidate) (matchmaking.Assignment, error) {
+	if len(candidates) < matchmaking.PlayersPerMatch {
+		return matchmaking.Assignment{}, matchmaking.ErrNotEnoughPlayers
+	}
+	ids := make([]int64, len(candidates))
+	for i, c := range candidates {
+		ids[i] = c.PlayerID
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT a.player_id, b.player_id, count(*), count(*) FILTER (WHERE a.team = b.team)
+		FROM matches m
+		JOIN match_players a ON a.match_id = m.id
+		JOIN match_players b ON b.match_id = m.id AND b.player_id > a.player_id
+		WHERE m.event_id = $1 AND m.state = 'completed'
+		  AND a.player_id = ANY($2::bigint[]) AND b.player_id = ANY($2::bigint[])
+		GROUP BY a.player_id, b.player_id`, eventID, ids)
+	if err != nil {
+		return matchmaking.Assignment{}, fmt.Errorf("read rotation history: %w", err)
+	}
+	defer rows.Close()
+	history := matchmaking.History{}
+	for rows.Next() {
+		var pair [2]int64
+		var meetings matchmaking.Meetings
+		if err := rows.Scan(&pair[0], &pair[1], &meetings.Shared, &meetings.Partners); err != nil {
+			return matchmaking.Assignment{}, err
+		}
+		history[pair] = meetings
+	}
+	if err := rows.Err(); err != nil {
+		return matchmaking.Assignment{}, err
+	}
+	return matchmaking.SelectNext(candidates, history)
+}
+
 func readyCandidates(ctx context.Context, tx pgx.Tx, eventID int64) ([]matchmaking.Candidate, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT p.id, p.display_name, p.rating, ep.ready_since
