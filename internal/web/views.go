@@ -23,6 +23,7 @@ type playerView struct {
 	ID          int64   `json:"id"`
 	Name        string  `json:"name"`
 	State       string  `json:"state"`
+	NextUp      bool    `json:"next_up,omitempty"`
 	WaitSeconds int     `json:"wait_seconds,omitempty"`
 	Rating      float64 `json:"rating,omitempty"`
 	RatedGames  int     `json:"rated_games,omitempty"`
@@ -100,7 +101,7 @@ func publicView(s store.Snapshot) snapshotView {
 	for _, p := range s.Queue {
 		v.Queue = append(v.Queue, playerView{
 			ID: p.PlayerID, Name: p.DisplayName, State: p.State,
-			WaitSeconds: int(p.WaitingFor(s.FetchedAt).Seconds()),
+			WaitSeconds: int(p.WaitingFor(s.FetchedAt).Seconds()), NextUp: s.NextUp[p.PlayerID],
 		})
 	}
 	for _, c := range s.Courts {
@@ -124,7 +125,7 @@ func organizerView(s store.Snapshot, withRatings bool) snapshotView {
 	for _, p := range s.Roster {
 		pv := playerView{
 			ID: p.PlayerID, Name: p.DisplayName, State: p.State,
-			WaitSeconds: int(p.WaitingFor(s.FetchedAt).Seconds()),
+			WaitSeconds: int(p.WaitingFor(s.FetchedAt).Seconds()), NextUp: s.NextUp[p.PlayerID],
 		}
 		if withRatings {
 			pv.Rating = p.Rating

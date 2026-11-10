@@ -132,9 +132,10 @@ func (p MatchPlayer) Delta() *float64 {
 type Snapshot struct {
 	Event     Event
 	Courts    []Court
-	Roster    []EventPlayer // every member, in display order
-	Queue     []EventPlayer // ready players, longest wait first
-	Recent    []Match       // most recently finished matches
+	Roster    []EventPlayer  // every member, in display order
+	Queue     []EventPlayer  // ready players, longest wait first
+	NextUp    map[int64]bool // projected next assignment, while the queue is unchanged
+	Recent    []Match        // most recently finished matches
 	FetchedAt time.Time
 }
 

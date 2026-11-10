@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/nicholashu/courtops/internal/matchmaking"
 )
 
 // Snapshot reads one consistent version of the event. Repeatable read keeps a
@@ -25,6 +26,20 @@ func (s *Store) Snapshot(ctx context.Context, eventID int64) (Snapshot, error) {
 		for _, p := range snap.Roster {
 			if p.State == StateReady {
 				snap.Queue = append(snap.Queue, p)
+			}
+		}
+		if snap.Event.IsLive() && len(snap.Queue) >= matchmaking.PlayersPerMatch {
+			candidates := make([]matchmaking.Candidate, len(snap.Queue))
+			for i, p := range snap.Queue {
+				candidates[i] = matchmaking.Candidate{PlayerID: p.PlayerID, Rating: p.Rating, ReadySince: *p.ReadySince}
+			}
+			next, err := nextAssignment(ctx, tx, eventID, candidates)
+			if err != nil {
+				return err
+			}
+			snap.NextUp = make(map[int64]bool, matchmaking.PlayersPerMatch)
+			for _, p := range next.Players() {
+				snap.NextUp[p.PlayerID] = true
 			}
 		}
 		if snap.Courts, err = courtsInTx(ctx, tx, eventID); err != nil {
