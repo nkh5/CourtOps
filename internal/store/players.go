@@ -51,7 +51,7 @@ func (s *Store) AddPlayer(ctx context.Context, eventID int64, entry roster.Entry
 			return fmt.Errorf("register player for event: %w", err)
 		}
 		if tag.RowsAffected() == 0 {
-			return conflict("this player is already on the event roster; use their check-in control instead")
+			return conflict("Player is Already on Event Roster")
 		}
 		out, err = member(ctx, tx, eventID, playerID)
 		if err != nil {

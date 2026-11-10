@@ -35,7 +35,9 @@ func TestAddPlayerHTTPWorkflowAndPrivacy(t *testing.T) {
 	}
 	response = c.post("/events/1/players", newArrivalForm())
 	wantStatus(t, response, http.StatusConflict)
-	response.Body.Close()
+	if html := body(t, response); !strings.Contains(html, ">Player is Already on Event Roster<") {
+		t.Fatal("missing duplicate roster message")
+	}
 
 	for _, path := range []string{"/board/1", "/board/1?fragment=1", "/board/1/state.json"} {
 		response = c.get(path)
