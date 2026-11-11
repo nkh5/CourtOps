@@ -259,3 +259,27 @@ func TestNewMatchesUseTheLatestRatings(t *testing.T) {
 		}
 	}
 }
+
+// Simulate upgrading a version-4 database. An earned 800 must not be
+// mistaken for the old beginner seed, even when the numbers happen to match.
+func TestStartingEloMigrationPreservesEarnedRatings(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	_, err := st.Pool().Exec(ctx, `
+		DELETE FROM schema_migrations WHERE version=5;
+		INSERT INTO players(display_name,private_ref,skill_seed,rating,rated_games) VALUES
+			('Old beginner','b',800,800,0), ('Old intermediate','i',1000,1000,0),
+			('Advanced','a',1200,1200,0), ('Returning','r',800,800,2)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = st.Migrate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for ref, want := range map[string]float64{"b": 400, "i": 800, "a": 1200, "r": 800} {
+		got, games := ratingOf(t, st, ref)
+		if got != want || (ref == "r" && games != 2) {
+			t.Errorf("%s: rating %v, games %d", ref, got, games)
+		}
+	}
+}
