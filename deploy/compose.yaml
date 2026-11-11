@@ -39,7 +39,7 @@ services:
       GOOGLE_REDIRECT_URL: "https://${COURTOPS_DOMAIN}/auth/google/callback"
       # Keep the first public release read-only until sign-in is verified.
       COURTOPS_READ_ONLY: ${COURTOPS_READ_ONLY:-false}
-      COURTOPS_RATINGS: ${COURTOPS_RATINGS:-false}
+      COURTOPS_RATINGS: ${COURTOPS_RATINGS:-true}
       TZ: ${TZ:-America/Chicago}
     depends_on:
       db:

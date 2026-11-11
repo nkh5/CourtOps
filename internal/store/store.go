@@ -23,8 +23,7 @@ type Store struct {
 	pool *pgxpool.Pool
 
 	// RatingsEnabled controls whether completing a match writes rating changes.
-	// It is off for the first pilot so that a confusing evening cannot bake bad
-	// numbers into player history.
+	// The server sets this from deployment configuration at startup.
 	RatingsEnabled bool
 }
 

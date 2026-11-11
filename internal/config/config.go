@@ -68,7 +68,7 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	ratingsEnabled, err := boolOr("COURTOPS_RATINGS", false)
+	ratingsEnabled, err := boolOr("COURTOPS_RATINGS", true)
 	if err != nil {
 		return Config{}, err
 	}
