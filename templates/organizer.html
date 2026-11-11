@@ -1,20 +1,21 @@
 {{template "head" .}}
-{{if eq .Snapshot.Event.State "finished"}}<p><a class="button button-primary" href="/results/{{.Snapshot.Event.ID}}">View Results</a></p>{{end}}
+
 {{$s := .Snapshot}}{{$csrf := .CSRF}}{{$now := $s.FetchedAt}}
 {{$editable := and (ne $s.Event.State "finished") (not .ReadOnly)}}
 <div class="event-head">
   <div>
-    <p class="eyebrow">Organizer View</p>
+
     <h1>{{$s.Event.Title}}</h1>
-    <p class="sub">{{date $s.Event.Date}} · {{template "statepill" $s.Event.State}}</p>
+    <p class="sub">Organizer View · {{date $s.Event.Date}} · {{template "statepill" $s.Event.State}}</p>
   </div>
   <div class="row">
+  {{if eq $s.Event.State "finished"}}<a class="button button-primary" href="/results/{{$s.Event.ID}}">View Results</a>{{end}}
   {{if $editable}}<a class="button button-primary" href="/events/{{$s.Event.ID}}/players/new">Add Player</a><form method="post" action="/events/{{$s.Event.ID}}/state" class="inline">
     <input type="hidden" name="csrf_token" value="{{$csrf}}">
     {{if eq $s.Event.State "setup"}}
       <button name="state" value="live" class="button button-primary">Start Event</button>
     {{else if eq $s.Event.State "live"}}
-      <button name="state" value="finished" class="button">Finish the event</button>
+      <button name="state" value="finished" class="button">Finish event</button>
     {{end}}
   </form>{{else if not .ReadOnly}}<a class="button button-danger-outline" href="/events/{{$s.Event.ID}}/delete">Delete Event</a>{{end}}
   </div>
@@ -25,11 +26,12 @@
 {{end}}
 
 {{template "eventstats" $s}}
+<nav class="sheet-nav" aria-label="Organizer sections"><a href="#courts">Courts</a><a href="#queue">Queue</a><a href="#roster">Player Check-in</a>{{if $s.Recent}}<a href="#recent">Recent Matches</a>{{end}}</nav>
 
 {{if and $editable (eq $s.Event.State "setup")}}
 <section class="card">
-  <h2>1 · Import the roster</h2>
-  <p>Export your Google Form responses as CSV to bring in the roster. Once the event is live, use <strong>Add Player</strong> for new arrivals.</p>
+  <h2>Import roster</h2>
+  <p>Upload a CSV from Google Forms. After play starts, use <strong>Add Player</strong> for late arrivals.</p>
   <form method="post" action="/events/{{$s.Event.ID}}/import" enctype="multipart/form-data" class="stack">
     <input type="hidden" name="csrf_token" value="{{$csrf}}">
     <div class="field">
@@ -42,7 +44,7 @@
 </section>
 {{end}}
 
-<section class="card">
+<section class="card" id="courts">
   <h2>Courts</h2>
   <div class="courts">
   {{range $s.Courts}}
@@ -92,16 +94,17 @@
   </form>{{end}}
 </section>
 
-<section class="card">
+<section class="card" id="queue">
   <h2>Queue</h2>
+  {{if and $s.Queue (eq $s.Event.State "live")}}<p class="help">Longest wait goes first. Within seven minutes, players who have shared fewer games get priority.</p>{{end}}
   {{if $s.Queue}}
   <div class="table-scroll"><table class="table">
     <thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Waiting</th>
       {{if $.Ratings}}<th scope="col">Rating</th>{{end}}<th scope="col">Action</th></tr></thead>
     <tbody>
     {{range $i, $p := $s.Queue}}
-      <tr{{if lt $i 4}} class="next-up"{{end}}>
-        <td>{{add $i 1}}{{if lt $i 4}} <span class="tag">next</span>{{end}}</td>
+      <tr{{if index $s.NextUp $p.PlayerID}} class="next-up"{{end}}>
+        <td>{{add $i 1}}{{if index $s.NextUp $p.PlayerID}} <span class="tag">next</span>{{end}}</td>
         <td>{{$p.DisplayName}}</td>
         <td>{{waited $p.ReadySince $now}}</td>
         {{if $.Ratings}}<td>{{rating $p.Rating}}{{if eq $p.RatedGames 0}} <span class="muted">(seed)</span>{{end}}</td>{{end}}
@@ -119,11 +122,11 @@
 </section>
 
 <section class="card" id="roster">
-  <div class="section-head"><div><h2>Player Check-in</h2></div>{{if $editable}}<a class="button button-primary" href="/events/{{$s.Event.ID}}/players/new">Add Player</a>{{end}}</div>
+  <div class="section-head"><h2>Player Check-in</h2>
   {{if $editable}}<form method="post" action="/events/{{$s.Event.ID}}/checkin-all" class="inline">
     <input type="hidden" name="csrf_token" value="{{$csrf}}">
     <button class="button button-primary">Check In All</button>
-  </form>{{end}}
+  </form>{{end}}</div>
   {{if $s.Roster}}
   <div class="table-scroll"><table class="table">
     <thead><tr><th scope="col">Player</th><th scope="col">State</th><th scope="col">Waiting</th><th scope="col">Arrival</th><th scope="col">Paddle?</th>
@@ -157,7 +160,7 @@
 </section>
 
 {{if $s.Recent}}
-<section class="card">
+<section class="card" id="recent">
   <h2>Recent Matches</h2>
   <ul class="results">
   {{range $s.Recent}}
