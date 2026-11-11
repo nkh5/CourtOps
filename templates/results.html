@@ -1,59 +1,69 @@
 {{template "head" .}}
 {{$r := .Results}}
-<div class="board-head results-heading">
-  <p class="eyebrow">Results</p>
+<div class="tournament-results">
+<header class="recap-heading">
   <h1>{{$r.Event.Title}}</h1>
-  <p class="sub">{{date $r.Event.Date}} <span class="date-divider" aria-hidden="true">/</span> {{template "statepill" $r.Event.State}}</p>
-</div>
-<dl class="event-stats recap-stats" aria-label="Event summary">
- <div><dt>Matches Played</dt><dd>{{$r.Completed}}</dd></div>
- <div><dt>Total Players</dt><dd>{{$r.Arrived}} <span class="stat-denominator">/ {{$r.Registered}}</span></dd><span class="stat-caption">registered players</span></div>
- <div><dt>Stayed Till the End</dt><dd>{{$r.AtEnd}}</dd></div>
- <div><dt>Event Length</dt><dd>{{if $r.LengthRecorded}}{{duration $r.Length}}{{else}}<span>Not recorded</span>{{end}}</dd></div>
+  <p>Results <span aria-hidden="true">/</span> {{date $r.Event.Date}} <span aria-hidden="true">/</span> {{template "statepill" $r.Event.State}}</p>
+</header>
+
+<dl class="recap-strip" aria-label="Event summary">
+  <div><dt>Matches Played</dt><dd>{{$r.Completed}}</dd></div>
+  <div><dt>Total Players</dt><dd>{{$r.Arrived}} <small>of {{$r.Registered}} registered</small></dd></div>
+  <div><dt>Stayed Till the End</dt><dd>{{$r.AtEnd}}</dd></div>
+  <div><dt>Event Length</dt><dd>{{if $r.LengthRecorded}}{{duration $r.Length}}{{else}}<small>Not recorded</small>{{end}}</dd></div>
 </dl>
-<section class="final-standings">
- <div class="page-heading"><h2>Podium</h2></div>
- {{if $r.Leaders}}
- <div class="podium" aria-label="Top three places">
- {{range $r.Leaders}}{{if le .Rank 3}}
-  <article class="podium-place podium-place-{{.Rank}}">
-   <h3><a href="/players/{{.ID}}">{{.Name}}</a></h3>
-   <div class="podium-step">
-    <span class="podium-medal" aria-label="Place {{.Rank}}">{{.Rank}}</span>
-    <p class="podium-wins">{{.Wins}} <span>wins</span></p>
-    <p class="podium-games">{{.Games}} games played</p>
-   </div>
-  </article>
- {{end}}{{end}}
- </div>
- <div class="runners-up" aria-label="Runners-up">
- {{range $r.Leaders}}{{if gt .Rank 3}}<a href="/players/{{.ID}}"><span class="runner-rank">{{.Rank}}</span>{{.Name}}</a>{{end}}{{end}}
- </div>
- <div class="table-scroll"><table class="table standings-table">
- <thead><tr><th scope="col">Place</th><th scope="col">Player</th><th scope="col">Wins</th><th scope="col">Played</th><th scope="col">Win rate</th></tr></thead>
- <tbody>{{range $r.Leaders}}<tr><td>{{.Rank}}</td><td><a href="/players/{{.ID}}">{{.Name}}</a></td><td>{{.Wins}}</td><td>{{.Games}}</td><td>{{.WinRate}}%</td></tr>{{end}}</tbody>
- </table></div>
- <p class="help">Ranked by wins, win rate, Elo, then earliest check-in.</p>
- {{else}}<p class="empty">No completed games were recorded, so there are no standings yet.</p>{{end}}
+
+<div class="honors">
+<section class="award-stage" id="podium" aria-labelledby="podium-heading">
+  <h2 id="podium-heading">Podium</h2>
+  <svg class="court-lines" viewBox="0 0 440 200" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="438" height="198"/><path d="M150 1v198m70-198v198m70-198v198M1 100h149m140 0h149"/></svg>
+  {{if $r.Leaders}}
+  <ol class="podium award-podium" aria-label="Top three places">
+    {{range $r.Leaders}}{{if le .Rank 3}}
+    <li class="award-place place-{{.Rank}}">
+      <h3><a href="/players/{{.ID}}">{{.Name}}</a></h3>
+      <div class="plinth">
+        <span class="place-number"><span class="visually-hidden">Place </span>{{.Rank}}</span>
+        <div class="award-record"><strong>{{.Wins}} {{if eq .Wins 1}}win{{else}}wins{{end}}</strong><span>{{.Games}} {{if eq .Games 1}}game{{else}}games{{end}} played</span></div>
+      </div>
+    </li>
+    {{end}}{{end}}
+  </ol>
+  {{else}}<p>No completed games were recorded.</p>{{end}}
 </section>
-<section class="player-lookup" id="players">
- <h2>Find Your Results</h2>
- <p class="muted">Search this event’s roster by display name to see current Elo and match history.</p>
- <form method="get" action="/results/{{$r.Event.ID}}#players" class="row search-form" role="search">
-  <label class="field" for="player-search">Player name<input type="search" id="player-search" name="q" value="{{.Search}}" maxlength="100" placeholder="Enter a display name"></label>
-  <button class="button button-primary" type="submit">Find Player</button>
- </form>
- <div class="table-scroll"><table class="table">
- <thead><tr><th scope="col">Player</th><th scope="col">Current Elo</th><th scope="col">History</th></tr></thead>
- <tbody>{{range .FoundPlayers}}<tr><td>{{.Name}} <span class="meta">#{{.ID}}</span></td><td>{{if .RatedGames}}{{rating .Rating}}{{else}}Unrated{{end}}</td><td><a href="/players/{{.ID}}">View matches</a></td></tr>{{else}}<tr><td colspan="3">No players found{{if .Search}} for “{{.Search}}”{{end}}.</td></tr>{{end}}</tbody>
- </table></div>
+<section class="finish-order" aria-labelledby="standings-heading">
+  <h2 id="standings-heading">Top five standings</h2>
+  {{if $r.Leaders}}
+  <div class="table-scroll"><table class="recap-table">
+  <thead><tr><th scope="col">Place</th><th scope="col">Player</th><th scope="col">Wins</th><th scope="col">Played</th><th scope="col">Win rate</th></tr></thead>
+  <tbody>{{range $r.Leaders}}<tr><td>{{.Rank}}</td><th scope="row"><a href="/players/{{.ID}}">{{.Name}}</a></th><td>{{.Wins}}</td><td>{{.Games}}</td><td>{{.WinRate}}%</td></tr>{{end}}</tbody>
+  </table></div>
+  <p class="help">Ranked by wins, win rate, Elo, then earliest check-in.</p>
+  {{else}}<p class="muted">No standings for this event.</p>{{end}}
 </section>
-<section class="board-results">
- <h2>All Match Results</h2>
- <ul class="results">{{range $r.Matches}}<li{{if eq .State "cancelled"}} class="match-cancelled"{{end}}>
-  <div class="row"><span class="court-tag">{{.CourtLabel}}</span><span class="meta">Match #{{.ID}} · {{matchDuration .}}</span>{{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}</div>
+</div>
+
+<section class="lookup-sheet" id="players" aria-labelledby="lookup-heading">
+  <div><h2 id="lookup-heading">Find Your Results</h2>
+    <p>Look up a player’s Elo and match history.</p>
+    <form method="get" action="/results/{{$r.Event.ID}}#players" role="search" class="lookup-form">
+      <label for="player-search">Player name</label>
+      <div><input type="search" id="player-search" name="q" value="{{.Search}}" maxlength="100" placeholder="Enter a display name"><button class="button button-primary" type="submit">Find Player</button></div>
+    </form>
+  </div>
+  <div class="table-scroll"><table class="recap-table lookup-table">
+  <thead><tr><th scope="col">Player</th><th scope="col">Current Elo</th><th scope="col">History</th></tr></thead>
+  <tbody>{{range .FoundPlayers}}<tr><th scope="row">{{.Name}} <span class="meta">#{{.ID}}</span></th><td>{{if .RatedGames}}{{rating .Rating}}{{else}}Unrated{{end}}</td><td><a href="/players/{{.ID}}" aria-label="View matches for {{.Name}}, player {{.ID}}">View matches</a></td></tr>{{else}}<tr><td colspan="3">No players found{{if .Search}} for “{{.Search}}”{{end}}.</td></tr>{{end}}</tbody>
+  </table></div>
+</section>
+
+<section class="match-sheet" id="matches" aria-labelledby="matches-heading">
+ <header><h2 id="matches-heading">All Match Results</h2><span>{{len $r.Matches}} {{if eq (len $r.Matches) 1}}match{{else}}matches{{end}}</span></header>
+ <ul class="match-ledger">{{range $r.Matches}}<li{{if eq .State "cancelled"}} class="void-match"{{end}}>
+  <div class="match-label"><h3>{{.CourtLabel}}</h3><p>Match #{{.ID}} · {{matchDuration .}}</p>{{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}</div>
   {{template "matchteams" .}}
  </li>{{else}}<li>No matches were recorded for this event.</li>{{end}}</ul>
 </section>
+</div>
 {{if and $r.Leaders (not .Search)}}<script src="/static/results.js" defer></script>{{end}}
 {{template "foot" .}}
