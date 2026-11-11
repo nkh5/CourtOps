@@ -1,4 +1,5 @@
 {{template "head" .}}
+<nav class="board-jump" aria-label="Board sections"><a href="#courts">Courts</a><a href="#queue">Queue</a></nav>
 <div id="board" data-event="{{.Snapshot.Event.ID}}">
 {{template "board_body.html" .}}
 </div>

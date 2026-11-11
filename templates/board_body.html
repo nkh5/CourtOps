@@ -7,19 +7,19 @@
 {{template "eventstats" $s}}
 
 <div class="board-main">
-<section class="board-court-section" aria-label="Courts">
+<section id="courts" class="board-court-section" aria-label="Courts">
 <h2>Courts</h2>
 <div class="courts board-courts">
 {{range $s.Courts}}
   <article class="court {{if .ActiveMatch}}court-busy{{else if not .Available}}court-closed{{else}}court-free{{end}}">
-    <h2>{{.Label}}</h2>
+    <h3>{{.Label}}</h3>
     {{if .ActiveMatch}}
       {{template "matchteams" .ActiveMatch}}
       <p class="meta">Playing since {{clock .ActiveMatch.StartedAt}}</p>
     {{else if eq $s.Event.State "finished"}}
       <p class="free-note">Event finished</p>
     {{else if .Available}}
-      <p class="free-note">Free — waiting for the next four</p>
+      <p class="free-note">Open for play</p>
     {{else}}
       <p class="free-note">Closed</p>
     {{end}}
@@ -28,17 +28,18 @@
 </div>
 </section>
 
-<section class="board-queue">
+<section id="queue" class="board-queue">
   <h2>Queue</h2>
+  {{if and $s.Queue (eq $s.Event.State "live")}}<p class="help">Longest wait goes first. Within seven minutes, players who have shared fewer games get priority.</p>{{end}}
   {{if eq $s.Event.State "finished"}}
-  <p class="empty">That’s a wrap. This event has finished.</p>
+  <p class="empty">Event finished.</p>
   {{else if $s.Queue}}
   <div class="table-scroll"><table class="table board-queue-table">
     <thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Waiting</th></tr></thead>
     <tbody>
     {{range $i, $p := $s.Queue}}
-      <tr{{if lt $i 4}} class="next-up"{{end}}>
-        <td>{{add $i 1}}{{if lt $i 4}} <span class="tag">next</span>{{end}}</td>
+      <tr{{if index $s.NextUp $p.PlayerID}} class="next-up"{{end}}>
+        <td>{{add $i 1}}{{if index $s.NextUp $p.PlayerID}} <span class="tag">next</span>{{end}}</td>
         <td>{{$p.DisplayName}}</td>
         <td>{{waited $p.ReadySince $s.FetchedAt}}</td>
       </tr>
@@ -46,7 +47,7 @@
     </tbody>
   </table></div>
   {{else}}
-  <p class="empty">Nobody is in the queue right now.</p>
+  <p class="empty">No players waiting.</p>
   {{end}}
 </section>
 
