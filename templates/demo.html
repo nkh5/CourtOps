@@ -1,0 +1,35 @@
+{{template "head" .}}
+<section id="demo" data-beginner="{{.Demo.Beginner}}" data-intermediate="{{.Demo.Intermediate}}" data-advanced="{{.Demo.Advanced}}" data-k="{{.Demo.K}}" data-window="{{.Demo.WaitMS}}">
+  <div class="demo-intro">
+    <h1 id="demo-title" tabindex="-1">Play Demo</h1>
+    <p>Run a practice event in this tab with no sign-in needed. Refresh to erase it.</p>
+  </div>
+  <noscript><p class="banner banner-warn">Turn on JavaScript to run the demo in your browser.</p></noscript>
+  <p id="demo-status" role="status" class="demo-status"></p>
+  <form id="demo-create" class="demo-create" hidden autocomplete="off">
+    <h2>Create a practice event</h2>
+    <div class="field"><label for="demo-name">Event Name</label><input id="demo-name" required maxlength="80" value="Saturday Club Doubles"></div>
+    <div class="field"><label for="demo-courts">Number of Courts</label><select id="demo-courts"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+    <label class="choice"><input id="demo-sample" type="checkbox" checked> Include eight sample players</label>
+    <button class="button button-primary">Create Event</button>
+  </form>
+  <div id="demo-event" hidden>
+    <div class="section-head"><p id="demo-phase" class="pill"></p><div id="demo-actions" class="row"></div></div>
+    <div id="demo-live">
+      <section aria-labelledby="demo-court-heading"><h2 id="demo-court-heading">Courts</h2><div id="demo-board" class="courts"></div></section>
+      <section class="demo-panel" aria-labelledby="demo-roster-heading">
+        <div class="section-head"><h2 id="demo-roster-heading">Player check-in</h2><button class="button" type="button" data-action="check-all">Check In All</button></div>
+        <form id="demo-add" class="demo-add" autocomplete="off">
+          <div class="field"><label for="demo-player">Player name</label><input id="demo-player" placeholder="Display name" required maxlength="60"></div>
+          <div class="field"><label for="demo-band">Skill band</label><select id="demo-band"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
+          <button class="button">Add Player</button>
+        </form>
+        <div id="demo-roster"></div>
+      </section>
+    </div>
+    <section id="demo-results" class="tournament-results" hidden aria-label="Event results"></section>
+    <section class="demo-panel" aria-labelledby="demo-log-heading"><h2 id="demo-log-heading">Match results</h2><div id="demo-log"></div></section>
+  </div>
+</section>
+<script type="module" src="/static/demo.js"></script>
+{{template "foot" .}}
