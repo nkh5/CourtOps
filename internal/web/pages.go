@@ -130,6 +130,9 @@ func (s *Server) handleOrganizer(w http.ResponseWriter, r *http.Request) {
 
 	data := s.newPage(w, r, snap.Event.Title)
 	data.Snapshot = &snap
+	if snap.Event.State == store.EventFinished {
+		data.Notice = "This event is now finished!"
+	}
 	data.Registrations, err = s.store.RegistrationDetails(r.Context(), eventID)
 	if err != nil {
 		s.storeError(w, r, err)

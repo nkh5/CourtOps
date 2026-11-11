@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/nicholashu/courtops/internal/store"
 )
 
 // Every handler in this file follows the same shape: read and check the inputs,
@@ -74,7 +76,11 @@ func (s *Server) handleSetEventState(w http.ResponseWriter, r *http.Request) {
 			Date: event.Date.Format("2006-01-02"), State: event.State})
 		return
 	}
-	s.redirectBack(w, r, eventID, "Event is now "+event.State+".")
+	notice := ""
+	if event.State != store.EventFinished {
+		notice = "Event is now " + event.State + "."
+	}
+	s.redirectBack(w, r, eventID, notice)
 }
 
 func (s *Server) handleAddCourt(w http.ResponseWriter, r *http.Request) {

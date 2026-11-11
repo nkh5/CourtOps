@@ -546,7 +546,7 @@ func TestFinishedOrganizerPageHasNoEventWriteForms(t *testing.T) {
 	if strings.Contains(html, `method="post" action="`+path) {
 		t.Fatal("finished event still offers write forms")
 	}
-	if !strings.Contains(html, "This event is finished") {
+	if strings.Count(html, "This event is now finished!") != 1 {
 		t.Fatal("finished event has no explanation")
 	}
 }

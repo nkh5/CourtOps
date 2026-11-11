@@ -15,15 +15,11 @@
     {{if eq $s.Event.State "setup"}}
       <button name="state" value="live" class="button button-primary">Start Event</button>
     {{else if eq $s.Event.State "live"}}
-      <button name="state" value="finished" class="button">Finish event</button>
+      <button name="state" value="finished" class="button">Finish Event</button>
     {{end}}
   </form>{{else if not .ReadOnly}}<a class="button button-danger-outline" href="/events/{{$s.Event.ID}}/delete">Delete Event</a>{{end}}
   </div>
 </div>
-
-{{if eq $s.Event.State "finished"}}
-<p class="banner banner-warn">This event is finished. Player and court controls are closed.</p>
-{{end}}
 
 {{template "eventstats" $s}}
 
@@ -64,7 +60,7 @@
         {{if $editable}}<form method="post" action="/events/{{$s.Event.ID}}/courts/{{.ID}}/next" class="inline">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
           <button class="button button-primary" {{if or (lt (len $s.Queue) 4) (ne $s.Event.State "live")}}disabled{{end}}>
-            Next match
+            Assign Next Four
           </button>
         </form>
         <form method="post" action="/events/{{$s.Event.ID}}/courts/{{.ID}}/availability" class="inline">
