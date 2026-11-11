@@ -15,8 +15,8 @@ const K = 32
 // Skill band seeds used when a roster is imported. They are starting points for
 // matchmaking, not measurements.
 const (
-	SeedBeginner     = 800
-	SeedIntermediate = 1000
+	SeedBeginner     = 400
+	SeedIntermediate = 800
 	SeedAdvanced     = 1200
 )
 

@@ -165,7 +165,7 @@ type columns struct {
 	paddle  int
 }
 
-// mapColumns finds the three required columns and two optional questions. Google Forms exports the
+// mapColumns finds the identity columns and optional registration questions. Google Forms exports the
 // full question text as the header, so columns are matched by keyword rather
 // than by an exact string.
 func mapColumns(header []string) (columns, error) {
@@ -209,9 +209,6 @@ func mapColumns(header []string) (columns, error) {
 	}
 	if cols.ref < 0 {
 		missing = append(missing, "email or club ID")
-	}
-	if cols.band < 0 {
-		missing = append(missing, "skill band")
 	}
 	if len(missing) > 0 {
 		return columns{}, fmt.Errorf("roster: the file is missing a %s column", strings.Join(missing, ", a "))
@@ -288,7 +285,7 @@ func sameAnswer(a, b *bool) bool {
 func normaliseBand(raw string) string {
 	s := strings.ToLower(strings.TrimSpace(raw))
 	if s == "" {
-		return ""
+		return "beginner"
 	}
 	matched := ""
 	for band := range bandSeeds {

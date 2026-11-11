@@ -32,11 +32,11 @@ func TestParseValidFile(t *testing.T) {
 	if first.DisplayName != "Ana Reyes" {
 		t.Errorf("display name = %q", first.DisplayName)
 	}
-	if first.Band != "intermediate" || first.Seed != 1000 {
-		t.Errorf("band/seed = %q/%d, want intermediate/1000", first.Band, first.Seed)
+	if first.Band != "intermediate" || first.Seed != 800 {
+		t.Errorf("band/seed = %q/%d, want intermediate/800", first.Band, first.Seed)
 	}
-	if res.Entries[1].Seed != 800 || res.Entries[2].Seed != 1200 {
-		t.Errorf("seeds = %d/%d, want 800/1200", res.Entries[1].Seed, res.Entries[2].Seed)
+	if res.Entries[1].Seed != 400 || res.Entries[2].Seed != 1200 {
+		t.Errorf("seeds = %d/%d, want 400/1200", res.Entries[1].Seed, res.Entries[2].Seed)
 	}
 	if res.Entries[1].Row != 3 {
 		t.Errorf("row = %d, want the file line number 3", res.Entries[1].Row)
@@ -116,7 +116,6 @@ func TestParseHeaderProblems(t *testing.T) {
 		name, in, want string
 	}{
 		{"no identifier column", "Name,Skill\nAna,Intermediate\n", "email or club ID"},
-		{"no band column", "Name,Email\nAna,ana@example.com\n", "skill band"},
 		{"no name column", "Email,Skill\nana@example.com,Intermediate\n", "display name"},
 		{"ambiguous", "Name,Nickname,Email,Skill\nA,B,c@example.com,Advanced\n", "two columns"},
 	}
@@ -244,5 +243,14 @@ func TestParseRejectsAmbiguousSkillBands(t *testing.T) {
 	}
 	if res.OK() || len(res.Errors) != 1 {
 		t.Fatal("ambiguous band was accepted")
+	}
+}
+
+func TestOmittedSkillDefaultsToBeginner(t *testing.T) {
+	for _, input := range []string{"Name,Email\nPat,club-1", "Name,Email,Skill\nPat,club-1,   "} {
+		r, err := Parse(strings.NewReader(input))
+		if err != nil || !r.OK() || r.Entries[0].Band != "beginner" || r.Entries[0].Seed != 400 {
+			t.Fatalf("missing band: result=%+v error=%v", r, err)
+		}
 	}
 }
