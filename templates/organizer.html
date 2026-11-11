@@ -166,7 +166,7 @@
   {{range $s.Recent}}
     <li{{if eq .State "cancelled"}} class="match-cancelled"{{end}}>
       <span class="court-tag">{{.CourtLabel}}</span>
-      {{if eq .State "cancelled"}}<strong>Cancelled</strong>{{else}}<strong>Team {{deref .WinningTeam}} won</strong>{{end}}
+      {{if eq .State "cancelled"}}<strong>Cancelled</strong>{{else}}<strong>Team {{deref .WinningTeam}} Won</strong>{{end}}
       {{template "matchteams" .}}
       {{if .EndedAt}}<span class="meta">{{clock .EndedAt}}</span>{{end}}
     </li>

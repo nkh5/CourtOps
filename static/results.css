@@ -16,20 +16,19 @@
 .honors {display:grid;grid-template-columns:minmax(0,1.32fr) minmax(0,1fr);align-items:stretch;gap:clamp(1rem,3vw,2.5rem)}
 .award-stage {position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;background:var(--night);color:white;padding:1.4rem clamp(.9rem,3vw,2rem) 0;border-radius:4px}
 .award-stage > p {margin:1.5rem 0 2rem}
-.court-lines {position:absolute;z-index:-1;pointer-events:none;width:76%;right:-22%;top:-6%;transform:rotate(-24deg);color:#24445a}
 .award-podium {display:flex;align-items:end;justify-content:center;margin:1.5rem 0 0;padding:0;list-style:none;gap:3px}
-.award-place {flex:1 1 0;min-width:0;text-align:center;--metal:#506a7b;--height:8rem}
-.place-1 {order:2;--metal:#9c763c;--height:10.5rem}
+.award-place {flex:1 1 0;min-width:0;text-align:center;--metal:#506a7b;--height:9.5rem}
+.place-1 {order:2;--metal:#9c763c;--height:12rem}
 .place-2 {order:1}
-.place-3 {order:3;--height:6.7rem;--metal:#816a58}
+.place-3 {order:3;--height:7rem;--metal:#79472c}
 .award-place h3 {font:500 clamp(.95rem,1.5vw,1.2rem)/1.2 system-ui,sans-serif;letter-spacing:-.02em;margin:0 .2rem .65rem}
 .award-place a {color:white;text-decoration:underline;text-underline-offset:.23em;text-decoration-color:#849bab}
 .award-place a:hover {text-decoration-color:white}
-.plinth {min-height:var(--height);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.45rem;background:#d4dfe6;color:var(--night);border-top:4px solid #a2b7c5;padding:.65rem .25rem}
-.place-1 .plinth {background:#fbf7ec;border-color:var(--brass)}
-.place-3 .plinth {background:#beced8;border-color:#91a7b7}
-.place-number {position:relative;display:grid;place-items:center;width:2.55rem;height:2.55rem;border:1px solid var(--metal);border-radius:50%;font:italic 1.65rem/1 var(--serif);outline:1px solid var(--metal);outline-offset:-4px}
-.place-1 .place-number {width:3.2rem;height:3.2rem;font-size:2.1rem}
+.plinth {min-height:var(--height);display:flex;align-items:center;justify-content:flex-start;flex-direction:column;gap:.45rem;background:#d4dfe6;color:var(--night);border-top:4px solid #a2b7c5;padding:.8rem .25rem}
+.place-1 .plinth {background:#f5df9f;border-color:var(--brass)}
+.place-3 .plinth {background:#ddb494;border-color:#bb8963}
+.place-number {position:relative;display:grid;place-items:center;flex:none;inline-size:2.85rem;block-size:2.85rem;border:1px solid var(--metal);border-radius:50%;outline:1px solid var(--metal);outline-offset:-4px}
+.place-number b {font:650 1.55rem/1 system-ui,sans-serif;font-variant-numeric:lining-nums tabular-nums}
 .award-record {display:grid;gap:.15rem}
 .award-record strong {font-size:1rem}
 .award-record span {font-size:.78rem}
@@ -40,6 +39,7 @@
 .recap-table :is(th,td):last-child {padding-right:0}
 .recap-table thead th {font-size:.76rem;color:var(--ink-soft);font-weight:550;white-space:nowrap}
 .recap-table tbody th {font-weight:600;overflow-wrap:anywhere;text-align:left}
+.finish-order .recap-table thead th {color:var(--night);font-size:inherit;font-weight:600}
 .finish-order .recap-table thead th:nth-child(2) {text-align:left}
 .finish-order tbody tr:first-child {background:var(--foam)}
 .finish-order tbody td:first-child {font:italic 1.4rem/1 var(--serif);text-align:center}
@@ -55,7 +55,7 @@
 .match-ledger {list-style:none;padding:0;margin:1rem 0}
 .match-ledger > li {display:grid;grid-template-columns:minmax(9rem,.65fr) minmax(0,2fr);gap:1rem;align-items:start;border-top:1px solid var(--rule);padding:1rem 0}
 .match-label h3 {margin:.35rem 0;font-weight:650}
-.match-label p {margin:0}
+.match-label p {margin:0;color:var(--night);font-weight:600}
 .match-label strong {display:block;margin-top:.35rem;font-size:.86rem}
 .match-ledger .teams {margin:0;align-items:stretch}
 .match-ledger .team {padding:.45rem .8rem}

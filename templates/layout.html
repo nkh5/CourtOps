@@ -53,12 +53,12 @@
 {{define "matchteams"}}
 <div class="teams">
   <div class="team{{if and (eq .State "completed") .WinningTeam (eq (deref .WinningTeam) 1)}} team-winner{{end}}">
-    <h4>Team 1{{if and (eq .State "completed") .WinningTeam (eq (deref .WinningTeam) 1)}} <span class="won">· won</span>{{end}}</h4>
+    <h4>Team 1{{if and (eq .State "completed") .WinningTeam (eq (deref .WinningTeam) 1)}} <span class="won">· Won</span>{{end}}</h4>
     <ul>{{range teamOf . 1}}<li>{{.DisplayName}}{{$d := pdelta .}}{{if $d}} <span class="delta">{{$d}}</span>{{end}}</li>{{end}}</ul>
   </div>
   <div class="versus" aria-hidden="true">vs</div>
   <div class="team{{if and (eq .State "completed") .WinningTeam (eq (deref .WinningTeam) 2)}} team-winner{{end}}">
-    <h4>Team 2{{if and (eq .State "completed") .WinningTeam (eq (deref .WinningTeam) 2)}} <span class="won">· won</span>{{end}}</h4>
+    <h4>Team 2{{if and (eq .State "completed") .WinningTeam (eq (deref .WinningTeam) 2)}} <span class="won">· Won</span>{{end}}</h4>
     <ul>{{range teamOf . 2}}<li>{{.DisplayName}}{{$d := pdelta .}}{{if $d}} <span class="delta">{{$d}}</span>{{end}}</li>{{end}}</ul>
   </div>
 </div>

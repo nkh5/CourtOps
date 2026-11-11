@@ -16,14 +16,13 @@
 <div class="honors">
 <section class="award-stage" id="podium" aria-labelledby="podium-heading">
   <h2 id="podium-heading">Podium</h2>
-  <svg class="court-lines" viewBox="0 0 440 200" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="438" height="198"/><path d="M150 1v198m70-198v198m70-198v198M1 100h149m140 0h149"/></svg>
   {{if $r.Leaders}}
   <ol class="podium award-podium" aria-label="Top three places">
     {{range $r.Leaders}}{{if le .Rank 3}}
     <li class="award-place place-{{.Rank}}">
       <h3><a href="/players/{{.ID}}">{{.Name}}</a></h3>
       <div class="plinth">
-        <span class="place-number"><span class="visually-hidden">Place </span>{{.Rank}}</span>
+        <span class="place-number"><span class="visually-hidden">Place </span><b>{{.Rank}}</b></span>
         <div class="award-record"><strong>{{.Wins}} {{if eq .Wins 1}}win{{else}}wins{{end}}</strong><span>{{.Games}} {{if eq .Games 1}}game{{else}}games{{end}} played</span></div>
       </div>
     </li>
@@ -31,8 +30,7 @@
   </ol>
   {{else}}<p>No completed games were recorded.</p>{{end}}
 </section>
-<section class="finish-order" aria-labelledby="standings-heading">
-  <h2 id="standings-heading">Top five standings</h2>
+<section class="finish-order" aria-label="Player standings">
   {{if $r.Leaders}}
   <div class="table-scroll"><table class="recap-table">
   <thead><tr><th scope="col">Place</th><th scope="col">Player</th><th scope="col">Wins</th><th scope="col">Played</th><th scope="col">Win rate</th></tr></thead>
@@ -60,7 +58,7 @@
 <section class="match-sheet" id="matches" aria-labelledby="matches-heading">
  <header><h2 id="matches-heading">All Match Results</h2><span>{{len $r.Matches}} {{if eq (len $r.Matches) 1}}match{{else}}matches{{end}}</span></header>
  <ul class="match-ledger">{{range $r.Matches}}<li{{if eq .State "cancelled"}} class="void-match"{{end}}>
-  <div class="match-label"><h3>{{.CourtLabel}}</h3><p>Match #{{.ID}} · {{matchDuration .}}</p>{{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}</div>
+  <div class="match-label"><h3>{{.CourtLabel}}</h3><p>Match #{{.ID}}</p>{{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}</div>
   {{template "matchteams" .}}
  </li>{{else}}<li>No matches were recorded for this event.</li>{{end}}</ul>
 </section>
