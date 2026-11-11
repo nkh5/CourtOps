@@ -7,8 +7,8 @@ getting drawn together, and nobody can tell you how long they have been sitting.
 
 CourtOps is a small web app for the person holding the pen. Import the roster
 from a Google Form, check people in, and press one button when a court frees up:
-the four longest-waiting players go on, split into the most balanced pair of
-teams. A public court board shows everyone where they are in the queue.
+the longest-waiting player goes on next, joined by three ready players chosen
+to mix the group when waits are close. A public court board shows everyone where they are in the queue.
 
 One sport, one club, one live event at a time. That limit is deliberate and it
 is what keeps the whole thing explainable.
@@ -24,8 +24,8 @@ is what keeps the whole thing explainable.
   These answers belong to the event and are visible only to organizers.
 - **Delete finished events** with a typed `DELETE` confirmation. Shared player
   profiles are kept; events with saved Elo changes are protected from deletion.
-- **Assign the next match** — the four longest-waiting ready players, split into
-  the most balanced of the three possible doubles pairings.
+- **Assign the next match** — prioritize waiting time, mix groups within a seven-minute
+  window, and split the chosen four into balanced teams.
 - **Record results** with an explicit confirmation, and optionally apply a
   provisional local Elo rating in the same transaction.
 - **Publish finished-event results** with a top-three podium, top-five standings,
@@ -114,14 +114,17 @@ no database, no clock.
 
 1. Sort the ready players by `ready_since`, oldest first, with player ID as the
    tie-break so the result is deterministic.
-2. Take the first four. **Waiting order wins over balance**: nobody is skipped to
-   make the teams closer.
-3. Try the three ways four players can be split into two doubles teams, and keep
-   the one with the smallest gap between team average ratings.
+2. Always take the longest-waiting player. For each remaining place, consider
+   players ready no more than seven minutes after the oldest remaining player.
+   Pick the one who has shared the fewest completed games in this event with
+   the players already selected (sum across those players). When tied, keep
+   waiting order. Cancelled games do not count. This never delays a ready match.
+3. Of the three doubles splits, choose the smallest team-average rating gap.
+   For equal gaps prefer the split with fewer previous partnerships in this
+   event. A fixed split order resolves any remaining tie.
 
-That is an `O(n log n)` sort plus three constant-size comparisons — not a search
-over every possible quartet. On this laptop it is 358 ns for 12 players and
-4.9 µs for 50, against a request that takes about 10 ms.
+Queue rows stay in waiting order. “Next” marks the actual predicted four and
+can change when more players become ready or a result is recorded.
 
 ### One event lock, every write
 
