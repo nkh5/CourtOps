@@ -67,6 +67,7 @@ func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 
 	// Public.
+	mux.HandleFunc("GET /demo", s.handleDemo)
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.HandleFunc("GET /results/{eventID}", s.handleResults)
 	mux.HandleFunc("GET /players/{playerID}", s.handlePlayerHistory)

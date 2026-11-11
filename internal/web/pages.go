@@ -24,6 +24,7 @@ type pageData struct {
 	Version   string
 	Now       time.Time
 
+	Demo          *demoRules
 	Results       *store.EventResults
 	History       *store.PlayerHistory
 	HistoryPage   int
