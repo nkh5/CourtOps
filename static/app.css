@@ -156,15 +156,22 @@ summary {cursor:pointer;font-weight:650;min-height:44px;align-content:center}
 .event-stats dt {font-size:.85rem;font-weight:500}
 .event-stats dd {font:600 clamp(1.35rem,2vw,1.8rem)/1.23 system-ui,sans-serif;letter-spacing:-.03em}
 .event-stats dd span {font-weight:450}
-.sheet-nav {display:flex;gap:1.6rem;flex-wrap:wrap;border-bottom:1px solid var(--line);margin:-.65rem 0 1.65rem}
-.sheet-nav a {display:inline-flex;align-items:center;min-height:44px;color:var(--link);font-weight:600;font-size:.9rem}
-.sheet-nav + .card {border-top:0}
+/* Shared by the live board, organizer, demo and results. */
+.recap-strip > div,.court,.results > li {border-radius:8px;background:#f3f6f9;box-shadow:0 4px 9px -5px #17355355}
+.recap-strip {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(.55rem,1.35vw,1.05rem);margin:1.7rem 0 2.15rem}
+.recap-strip > div {display:grid;grid-template-rows:subgrid;grid-row:span 2;row-gap:.65rem;align-content:start;min-width:0;padding:clamp(.85rem,1.9vw,1.4rem);}
+.recap-strip dt {font-size:clamp(.86rem,1.3vw,1rem);font-weight:650;color:var(--ink);line-height:1.25}
+.recap-strip dd {margin:0;font:500 clamp(1.9rem,3.5vw,3rem)/1 var(--serif);font-variant-numeric:lining-nums tabular-nums;letter-spacing:-.035em;overflow-wrap:anywhere}
+.recap-strip small {display:inline-block;font:500 .84rem/1.3 system-ui,sans-serif;letter-spacing:0;color:var(--ink-soft)}
+@media(max-width:40rem) {
+ .recap-strip {grid-template-columns:1fr 1fr;padding:0;margin:1.3rem 0}
+ .recap-strip small {font-size:.76rem}
+}
 .board-main {display:grid;grid-template-columns:minmax(0,1.7fr) minmax(16rem,1fr);gap:clamp(1.25rem,4vw,3rem);align-items:start}
-.board-jump {display:none}
 .board-main section,.card,.form-grid > * {min-width:0}
 .board-main h2,.board-results > h2,.card > h2,.section-head h2,.final-standings h2,.player-lookup h2 {font:500 1.65rem/1.2 var(--serif);letter-spacing:-.025em}
 .courts,.results {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:1rem}
-.court,.results > li {border:1px solid var(--line);background:white;padding:1rem;min-width:0}
+.court,.results > li {border:0;padding:clamp(.85rem,1.9vw,1.4rem);min-width:0}
 .court h3,.court-tag {font-size:1.05rem;font-weight:650}
 .court-busy {border-top:3px solid var(--ink)}
 .court-free .free-note,.court-closed .free-note {margin:.25rem 0;color:var(--ink-soft)}
@@ -194,8 +201,6 @@ summary {cursor:pointer;font-weight:650;min-height:44px;align-content:center}
 @keyframes confetti-fall {to {transform:translate(var(--drift),105vh) rotate(var(--spin));opacity:0}}
 @media(max-width:52rem) {
  .board-main {grid-template-columns:1fr}
- .board-jump {display:flex;align-items:center;gap:1.2rem;margin:-.5rem 0 1.2rem;font-size:.9rem}
- .board-jump a {display:inline-flex;align-items:center;min-height:44px}
  .register-group {grid-template-columns:8rem minmax(0,1fr)}
  .event-links {gap:.55rem}
 }
@@ -212,7 +217,6 @@ summary {cursor:pointer;font-weight:650;min-height:44px;align-content:center}
  .event-stats {grid-template-columns:repeat(2,minmax(0,1fr))}
  .event-stats > div:nth-child(2) {border-right:0}
  .event-stats > div:nth-last-child(n+3) {border-bottom:1px solid var(--line)}
- .sheet-nav {gap:.25rem 1rem}
  .form-grid {grid-template-columns:1fr}
  .form-wide {grid-column:auto}
  .table th,.table td {padding:.55rem .4rem}

@@ -44,11 +44,11 @@
 
 {{define "eventstats"}}
 {{$stats := eventStats .}}
-<dl class="event-stats" aria-label="Event at a glance">
-  <div><dt>Checked in</dt><dd>{{$stats.CheckedIn}} <span>players</span></dd></div>
-  <div><dt>In the queue</dt><dd>{{$stats.Queue}} <span>waiting</span></dd></div>
-  <div><dt>On court</dt><dd>{{$stats.OnCourt}} <span>playing</span></dd></div>
-  <div><dt>Courts available</dt><dd>{{$stats.CourtsAvailable}} <span>/ {{$stats.CourtsTotal}}</span></dd></div>
+<dl class="recap-strip" aria-label="Event at a glance">
+  <div><dt>Checked In</dt><dd>{{$stats.CheckedIn}} <small>players</small></dd></div>
+  <div><dt>In the Queue</dt><dd>{{$stats.Queue}} <small>waiting</small></dd></div>
+  <div><dt>On Court</dt><dd>{{$stats.OnCourt}} <small>playing</small></dd></div>
+  <div><dt>Courts Available</dt><dd>{{$stats.CourtsAvailable}} <small>/ {{$stats.CourtsTotal}}</small></dd></div>
 </dl>
 {{end}}
 

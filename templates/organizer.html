@@ -26,7 +26,6 @@
 {{end}}
 
 {{template "eventstats" $s}}
-<nav class="sheet-nav" aria-label="Organizer sections"><a href="#courts">Courts</a><a href="#queue">Queue</a><a href="#roster">Player Check-in</a>{{if $s.Recent}}<a href="#recent">Recent Matches</a>{{end}}</nav>
 
 {{if and $editable (eq $s.Event.State "setup")}}
 <section class="card">
