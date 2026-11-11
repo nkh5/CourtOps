@@ -48,7 +48,7 @@ func TestPublicFinishedResultsAndPlayerHistory(t *testing.T) {
 	r = c.get(fmt.Sprintf("/results/%d", e.ID))
 	wantStatus(t, r, http.StatusOK)
 	html := body(t, r)
-	for _, want := range []string{"Podium", "Find Your Results", "Not recorded", "Unrated", "Alex &lt;script&gt;"} {
+	for _, want := range []string{"Podium", "Find Your Results", "Not recorded", "800 <small>starting Elo</small>", "Alex &lt;script&gt;"} {
 		if !strings.Contains(html, want) {
 			t.Errorf("missing %s", want)
 		}

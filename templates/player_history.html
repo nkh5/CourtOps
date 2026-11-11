@@ -6,7 +6,7 @@
  <p class="sub">Player #{{$h.Player.ID}}</p>
 </div>
 <dl class="event-stats player-rating">
- <div><dt>Current Elo</dt><dd>{{if $h.Player.RatedGames}}{{rating $h.Player.Rating}}{{else}}<span>Unrated</span>{{end}}</dd></div>
+ <div><dt>Current Elo</dt><dd>{{if $h.Player.RatedGames}}{{rating $h.Player.Rating}}{{else if $.Ratings}}{{rating $h.Player.Rating}} <span>starting Elo</span>{{else}}<span>Unrated</span>{{end}}</dd></div>
  <div><dt>Rated games</dt><dd>{{$h.Player.RatedGames}}</dd></div>
 </dl>
 <section class="board-results">

@@ -53,7 +53,7 @@
   </div>
   <div class="table-scroll"><table class="recap-table lookup-table">
   <thead><tr><th scope="col">Player</th><th scope="col">Current Elo</th><th scope="col">History</th></tr></thead>
-  <tbody>{{range .FoundPlayers}}<tr><th scope="row">{{.Name}} <span class="meta">#{{.ID}}</span></th><td>{{if .RatedGames}}{{rating .Rating}}{{else}}Unrated{{end}}</td><td><a href="/players/{{.ID}}" aria-label="View matches for {{.Name}}, player {{.ID}}">View matches</a></td></tr>{{else}}<tr><td colspan="3">No players found{{if .Search}} for “{{.Search}}”{{end}}.</td></tr>{{end}}</tbody>
+  <tbody>{{range .FoundPlayers}}<tr><th scope="row">{{.Name}} <span class="meta">#{{.ID}}</span></th><td>{{if .RatedGames}}{{rating .Rating}}{{else if $.Ratings}}{{rating .Rating}} <small>starting Elo</small>{{else}}Unrated{{end}}</td><td><a href="/players/{{.ID}}" aria-label="View matches for {{.Name}}, player {{.ID}}">View matches</a></td></tr>{{else}}<tr><td colspan="3">No players found{{if .Search}} for “{{.Search}}”{{end}}.</td></tr>{{end}}</tbody>
   </table></div>
 </section>
 
