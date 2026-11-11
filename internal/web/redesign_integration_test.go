@@ -15,7 +15,7 @@ func TestDeniedSignInHomeStillShowsEvents(t *testing.T) {
 	r := c.get("/?signin=not-organizer")
 	wantStatus(t, r, http.StatusOK)
 	html := body(t, r)
-	for _, want := range []string{"Public club evening", "banner-problem", "not an organizer", "Court board", "Events"} {
+	for _, want := range []string{"Public club evening", "banner-problem", "not an organizer", "Court Board", "Events"} {
 		if !strings.Contains(html, want) {
 			t.Errorf("home missing %q", want)
 		}

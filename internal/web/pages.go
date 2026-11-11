@@ -99,7 +99,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := s.newPage(w, r, "Events")
-	for _, group := range []eventGroup{{State: store.EventLive, Label: "In play"}, {State: store.EventSetup, Label: "In setup"}, {State: store.EventFinished, Label: "Finished"}} {
+	for _, group := range []eventGroup{{State: store.EventLive, Label: "Current"}, {State: store.EventSetup, Label: "Starting"}, {State: store.EventFinished, Label: "Finished"}} {
 		for _, event := range events {
 			if event.State == group.State {
 				group.Events = append(group.Events, event)
@@ -203,7 +203,7 @@ func (s *Server) handleBoard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := s.newPage(w, r, snap.Event.Title+" — court board")
+	data := s.newPage(w, r, snap.Event.Title+" — Court Board")
 	data.Snapshot = &snap
 
 	if r.URL.Query().Get("fragment") == "1" {

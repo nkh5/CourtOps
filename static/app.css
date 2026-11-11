@@ -125,6 +125,8 @@ main a:hover {text-decoration:underline}
 h1,.board-head h1,.event-head h1 {font:400 clamp(2.25rem,4.7vw,3.65rem)/1.06 var(--serif); letter-spacing:-.04em; text-wrap:balance; margin:0 0 .8rem}
 .page-heading h1 {font-size:clamp(3rem,6.4vw,4.8rem); margin:0}
 .page-heading {margin-bottom:1.8rem}
+.events-heading {display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.events-heading .demo-link {min-inline-size:clamp(7.5rem,18vw,13rem);white-space:nowrap}
 .home-grid {display:grid;gap:2rem}
 .organizer-card {border-block:1px solid var(--line);padding:.7rem 0}
 summary {cursor:pointer;font-weight:650;min-height:44px;align-content:center}

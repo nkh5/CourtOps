@@ -14,7 +14,7 @@
 {{end}}
 
 <section class="events-card" id="events">
-  <div class="page-heading"><h1>Events</h1></div>
+  <div class="page-heading events-heading"><h1>Events</h1><a class="button button-primary demo-link" href="/demo">Play Demo</a></div>
   {{range .EventGroups}}
   <section class="register-group group-{{.State}}" aria-label="{{.Label}}">
     <div class="register-label"><h2>{{.Label}}</h2><span>{{len .Events}} {{if eq (len .Events) 1}}event{{else}}events{{end}}</span></div>
@@ -25,8 +25,8 @@
           <span class="event-date">{{date .Date}}</span>
         </div>
         <div class="event-links">
-          <a class="board-link" href="{{if eq .State "finished"}}/results/{{else}}/board/{{end}}{{.ID}}">{{if eq .State "finished"}}Results{{else}}Court board{{end}}<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></a>
-          {{if $.SignedIn}}<a href="/events/{{.ID}}">Manage event</a>{{end}}
+          <a class="board-link" href="{{if eq .State "finished"}}/results/{{else}}/board/{{end}}{{.ID}}">{{if eq .State "finished"}}Results{{else}}Court Board{{end}}<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></a>
+          {{if $.SignedIn}}<a href="/events/{{.ID}}">Manage Event</a>{{end}}
           {{if and $.SignedIn (not $.ReadOnly) (eq .State "finished")}}<a class="delete-link" href="/events/{{.ID}}/delete">Delete</a>{{end}}
         </div>
       </li>
