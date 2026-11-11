@@ -34,9 +34,15 @@ is what keeps the whole thing explainable.
   cancelled games do not count.
 - **Look up players** by public display name from event results to see current Elo
   and paginated match history across events. Players without rated games show
-  as Unrated. Email/club IDs and registration answers remain private.
+  their starting Elo when ratings are enabled, or “Unrated” otherwise. Email/club IDs and registration answers remain private.
 - **Show a public board** that polls every five seconds and says so when it is
   showing stale data.
+
+**Try the organizer workflow:** open **Play demo** on the Events page, or go
+directly to `/demo`. Create an event with the sample roster, check everyone in,
+start play, assign a court, and record a winner. Finish the event to view its
+standings. Demo events exist only in that browser tab; refreshing starts over.
+Names, results, and Elo from the demo never reach the server.
 
 Players never need an account. Organizers sign in with Google, and only the
 accounts on a configured allowlist can change anything.
@@ -95,8 +101,7 @@ re-runs the migrations from an empty database. They skip themselves when
 
 ### Google Form and player check-in
 
-The CSV importer accepts **Display name**, **Email or club ID**, and **Skill band**
-(required), plus **Estimated arrival time** and **Need a paddle?** (optional).
+The CSV importer accepts **Display name** and **Email or club ID** (required), plus **Skill band**, **Estimated arrival time**, and **Need a paddle?** (optional).
 Paddle answers are Yes, No, or blank. Existing three-column exports still work.
 CSV imports remain a setup action; Google Forms do not automatically synchronize.
 
@@ -199,9 +204,10 @@ players, so the four-player total is unchanged. Two equal teams move ±16.
 
 These are **provisional local numbers**, not a measure of anyone's real skill. A
 doubles result cannot separate a player from their partner, and the seed comes
-from a self-reported band (beginner 800, intermediate 1000, advanced 1200). The
-ratings are off by default (`COURTOPS_RATINGS=false`) so a first pilot cannot
-bake bad numbers into player history.
+from a self-reported band (beginner or blank 400, intermediate 800, advanced 1200).
+Elo updates from the first completed match by default. Cancelled and unfinished games
+do not count. Set `COURTOPS_RATINGS=false` to explicitly run unrated games.
+Migration 0005 adjusts old starting ratings only for players with no rated games; earned ratings and match histories stay intact.
 
 Migration `0004_event_results.sql` starts tracking event start/finish times and
 uninterrupted attendance. Older events show “Not recorded” for event length.
