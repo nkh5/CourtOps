@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {PracticeEvent} from '../static/demo-model.mjs';
+
+const rules = {beginner:400,intermediate:800,advanced:1200,k:32,window:420000};
+test('two active courts, cancellation, first Elo result and attendance', () => {
+  let time = 100;
+  const e = new PracticeEvent('Test',2,false,rules,() => time++);
+  for (let i=1; i<=8; i++) e.add('Player '+i);
+  e.checkAll();
+  assert.equal(e.assign(0),false);
+  e.start();
+  assert.ok(e.assign(0)); assert.ok(e.assign(1));
+  assert.equal(e.queue().length,0); assert.equal(e.finish(),false);
+  assert.ok(e.record(1,0));
+  assert.ok(e.players.every(p => p.games === 0 && p.rating === 400));
+  const [winners,losers] = e.courts[0].teams;
+  assert.ok(e.record(0,1)); assert.equal(e.record(0,1),false);
+  assert.ok(winners.every(p => p.rating === 416 && p.wins === 1));
+  assert.ok(losers.every(p => p.rating === 384 && p.games === 1));
+  assert.equal(e.queue().length,8);
+  e.leave(winners[0]); e.checkAll();
+  assert.equal(e.queue().length,7);
+  assert.ok(e.finish());
+  assert.equal(e.standings().length,4);
+  assert.deepEqual(e.standings().slice(0,2),winners);
+  assert.equal(new PracticeEvent('Next tab',1,false,rules).history.length,0);
+});
+test('a short difference in wait allows another group to mix in', () => {
+  let t = 0;
+  const e = new PracticeEvent('Rotation',1,false,rules,() => t++);
+  for (let i=0; i<4; i++) e.add('Early '+i);
+  e.checkAll(); e.start(); e.assign(0); e.record(0,1);
+  t += 300000;
+  for (let i=0; i<4; i++) e.add('Late '+i);
+  e.checkAll(); e.assign(0);
+  const group = e.courts[0].teams.flat();
+  assert.ok(group.includes(e.players[0]));
+  assert.equal(group.filter(p=>p.id>4).length,3);
+});

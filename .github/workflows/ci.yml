@@ -77,6 +77,9 @@ jobs:
         # database races. They are different classes of bug, so both run.
         run: go test -race -count=1 ./...
 
+      - name: Test the browser-only practice event
+        run: node --test testdata/demo.test.mjs
+
       - name: Algorithm benchmarks
         # Run once to keep them compiling and to print numbers in the log.
         run: go test -run '^$' -bench . -benchtime 100x ./internal/matchmaking/
