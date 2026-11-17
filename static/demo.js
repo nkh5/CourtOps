@@ -33,7 +33,7 @@ function reset() {
   event = null;
   byId('demo-create').reset(); byId('demo-add').reset();
   byId('demo-create').hidden = false; byId('demo-event').hidden = true;
-  for (const id of ['demo-actions','demo-phase','demo-board','demo-roster','demo-results','demo-log','demo-status'])
+  for (const id of ['demo-actions','demo-phase','demo-board','demo-roster','demo-results','demo-log','demo-log-count','demo-status'])
     byId(id).replaceChildren();
   byId('demo-title').textContent = 'Play Demo';
 }
@@ -62,9 +62,9 @@ function render(msg) {
       c.append(el('h3','Court '+(i+1)));
       if (!m) {
         c.append(el('p',!live ? 'Ready when the event starts.' : queue.length < 4 ? 'Waiting for four ready players.' : 'Open for the next four.','free-note'));
-        const b = action('Assign Next Four','assign',i,true);
+        const b = action('Assign Next Four','assign',i,true), foot = el('div',null,'court-foot');
         b.disabled = !live || queue.length < 4;
-        c.append(b);
+        foot.append(b); c.append(foot);
       } else {
         const teams = el('div',null,'teams');
         m.teams.forEach((ps,t) => {
@@ -73,9 +73,10 @@ function render(msg) {
           list.append(...ps.map(p => el('li',p.name)));
           team.append(el('h4','Team '+(t+1)),list); teams.append(team);
         });
-        const row = el('div',null,'row');
-        row.append(action('Team 1 Won','win1',i),action('Team 2 Won','win2',i),action('Cancel match','cancel',i));
-        c.append(teams,row);
+        const foot = el('div',null,'court-foot'), row = el('div',null,'row'), cancel = action('Cancel match','cancel',i);
+        cancel.classList.add('button-quiet');
+        row.append(action('Team 1 Won','win1',i,true),action('Team 2 Won','win2',i,true));
+        foot.append(cancel,row); c.append(teams,foot);
       }
       return c;
     }));
@@ -93,14 +94,37 @@ function render(msg) {
     });
     byId('demo-roster').replaceChildren(rows.length ? table(['Player','Status','Elo','Action'],rows) : el('p','Add your first player above.','muted'));
   }
-  const log = el('ol',null,'demo-log');
-  for (const m of event.history) {
-    const item = el('li');
-    item.append(el('strong','Court '+(m.court+1)+' · Match #'+m.id+' · '+(m.winner ? 'Team '+m.winner+' Won' : 'Cancelled')),
-      el('span',m.teams.map(names).join(' vs ')));
-    log.append(item);
+  byId('demo-log').replaceChildren(event.history.length ? ledger(event.history) : el('p','No matches recorded yet.','muted'));
+  byId('demo-log-count').textContent = event.history.length ? event.history.length+(event.history.length === 1 ? ' match' : ' matches') : '';
+}
+// The same markup as the finished-event match sheet, so both read alike.
+const signed = d => { const n = Math.round(d); return (n < 0 ? '-' : '+')+Math.abs(n); };
+function ledger(history) {
+  const list = el('ul',null,'match-ledger');
+  for (const m of history) {
+    const item = el('li',null,m.winner ? null : 'void-match'), label = el('div',null,'match-label');
+    label.append(el('h3','Court '+(m.court+1)),el('p','Match #'+m.id));
+    if (!m.winner) label.append(el('strong','Cancelled'));
+    const teams = el('div',null,'teams');
+    m.teams.forEach((ps,t) => {
+      if (t) { const vs = el('div','vs','versus'); vs.setAttribute('aria-hidden','true'); teams.append(vs); }
+      const won = m.winner === t+1, team = el('div',null,'team'+(won ? ' team-winner' : '')), h = el('h4','Team '+(t+1)), list = el('ul');
+      if (won) h.append(' ',el('span','· Won','won'));
+      list.append(...ps.map(p => {
+        const li = el('li',p.name);
+        if (p.delta != null) li.append(' ',el('span',signed(p.delta),'delta'));
+        return li;
+      }));
+      team.append(h,list); teams.append(team);
+    });
+    item.append(label,teams); list.append(item);
   }
-  byId('demo-log').replaceChildren(event.history.length ? log : el('p','No matches recorded yet.','muted'));
+  return list;
+}
+function eloLine(rating, change) {
+  const line = el('span',Math.round(rating)+' Elo ','award-elo');
+  line.append(el('b',signed(change)));
+  return line;
 }
 function renderResults() {
   const out = byId('demo-results'), ranked = event.standings();
@@ -119,7 +143,7 @@ function renderResults() {
     const item = el('li',null,'award-place place-'+(i+1)), base = el('div',null,'plinth');
     const medal = el('span',null,'place-number'); medal.append(el('b',i+1));
     const record = el('div',null,'award-record');
-    record.append(el('strong',p.wins+(p.wins === 1 ? ' win' : ' wins')),el('span',p.games+(p.games === 1 ? ' game' : ' games')));
+    record.append(el('strong',p.wins+(p.wins === 1 ? ' win' : ' wins')),el('span',p.games+(p.games === 1 ? ' game' : ' games')+' played'),eloLine(p.rating,p.rating-p.seed));
     base.append(medal,record); item.append(el('h3',p.name),base); podium.append(item);
   }
   stage.append(el('h2','Podium'),podium);

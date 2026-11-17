@@ -18,7 +18,16 @@ type ResultPlayer struct {
 	Rating            float64
 	RatedGames        int
 	CheckedInAt       *time.Time
+	// EventElo is the rating after this player's last rated game in the event,
+	// and EventChange is how far it moved across the event. Both are only
+	// meaningful when EventRated is true.
+	EventElo, EventChange float64
+	EventRated            bool
+	eloStart              float64
 }
+
+// EventChangeText formats the event's rating movement with its sign.
+func (p ResultPlayer) EventChangeText() string { return fmt.Sprintf("%+.0f", p.EventChange) }
 
 func (p ResultPlayer) WinRate() int {
 	if p.Games == 0 {
@@ -92,10 +101,21 @@ func (s *Store) Results(ctx context.Context, eventID int64) (EventResults, error
 					if m.WinningTeam != nil && mp.Team == *m.WinningTeam {
 						p.Wins++
 					}
+					// Matches arrive newest first: the first rated game seen
+					// holds the closing Elo, the last one the opening Elo.
+					if mp.RatingBefore != nil && mp.RatingAfter != nil {
+						if !p.EventRated {
+							p.EventElo, p.EventRated = *mp.RatingAfter, true
+						}
+						p.eloStart = *mp.RatingBefore
+					}
 				}
 			}
 		}
 		for _, p := range byID {
+			if p.EventRated {
+				p.EventChange = p.EventElo - p.eloStart
+			}
 			out.Players = append(out.Players, *p)
 			if p.Games > 0 {
 				out.Leaders = append(out.Leaders, *p)

@@ -28,7 +28,8 @@ export class PracticeEvent {
       throw new Error('Use a name of 1–60 characters on an open roster of fewer than 100.');
     if (this.players.some(p => p.name.toLowerCase() === name.toLowerCase()))
       throw new Error('That player is already on this roster.');
-    this.players.push({id: this.players.length + 1, name, rating: this.rules[band] ?? this.rules.beginner,
+    const rating = this.rules[band] ?? this.rules.beginner;
+    this.players.push({id: this.players.length + 1, name, rating, seed: rating,
       state: 'Resting', checkedAt: null, readyAt: null, wins: 0, games: 0});
   }
   toggle(p) {
@@ -83,10 +84,11 @@ export class PracticeEvent {
   record(court, winner) {
     const match = this.courts[court];
     if (!match || ![0,1,2].includes(winner)) return false;
+    let delta = null;
     if (winner) {
       const means = match.teams.map(([a,b]) => (a.rating + b.rating)/2);
       const expected = 1/(1 + 10 ** ((means[1] - means[0])/400));
-      const delta = this.rules.k * ((winner === 1 ? 1 : 0) - expected);
+      delta = this.rules.k * ((winner === 1 ? 1 : 0) - expected);
       match.teams.forEach((team, i) => team.forEach(p => {
         p.rating += i === 0 ? delta : -delta;
         p.games++;
@@ -103,7 +105,9 @@ export class PracticeEvent {
     }
     const now = this.now();
     for (const p of match.teams.flat()) { p.state = 'Ready'; p.readyAt = now; }
-    this.history.unshift({...match, winner});
+    // Names and Elo moves are copied so the record reads as it was played.
+    const teams = match.teams.map((team, i) => team.map(p => ({name: p.name, delta: delta == null ? null : i === 0 ? delta : -delta})));
+    this.history.unshift({...match, teams, winner});
     this.courts[court] = null;
     return true;
   }

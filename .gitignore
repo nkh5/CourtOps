@@ -47,3 +47,4 @@ deploy/previous-image.txt
 # Local design notes; README is the project's published documentation.
 /PRODUCT.md
 /DESIGN.md
+.claude/

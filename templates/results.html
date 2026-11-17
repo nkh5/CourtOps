@@ -23,7 +23,7 @@
       <h3><a href="/players/{{.ID}}">{{.Name}}</a></h3>
       <div class="plinth">
         <span class="place-number"><span class="visually-hidden">Place </span><b>{{.Rank}}</b></span>
-        <div class="award-record"><strong>{{.Wins}} {{if eq .Wins 1}}win{{else}}wins{{end}}</strong><span>{{.Games}} {{if eq .Games 1}}game{{else}}games{{end}} played</span></div>
+        <div class="award-record"><strong>{{.Wins}} {{if eq .Wins 1}}win{{else}}wins{{end}}</strong><span>{{.Games}} {{if eq .Games 1}}game{{else}}games{{end}} played</span>{{if .EventRated}}<span class="award-elo">{{rating .EventElo}} Elo <b>{{.EventChangeText}}</b></span>{{end}}</div>
       </div>
     </li>
     {{end}}{{end}}

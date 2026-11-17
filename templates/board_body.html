@@ -15,7 +15,7 @@
     <h3>{{.Label}}</h3>
     {{if .ActiveMatch}}
       {{template "matchteams" .ActiveMatch}}
-      <p class="meta">Playing since {{clock .ActiveMatch.StartedAt}}</p>
+      <p class="court-foot">Playing since {{clock .ActiveMatch.StartedAt}}</p>
     {{else if eq $s.Event.State "finished"}}
       <p class="free-note">Event finished</p>
     {{else if .Available}}
@@ -39,9 +39,9 @@
     <tbody>
     {{range $i, $p := $s.Queue}}
       <tr{{if index $s.NextUp $p.PlayerID}} class="next-up"{{end}}>
-        <td>{{add $i 1}}{{if index $s.NextUp $p.PlayerID}} <span class="tag">next</span>{{end}}</td>
+        <td>{{add $i 1}}</td>
         <td>{{$p.DisplayName}}</td>
-        <td>{{waited $p.ReadySince $s.FetchedAt}}</td>
+        <td>{{waited $p.ReadySince $s.FetchedAt}}{{if index $s.NextUp $p.PlayerID}} <span class="tag">Next</span>{{end}}</td>
       </tr>
     {{end}}
     </tbody>
@@ -59,8 +59,7 @@
   <ul class="results">
   {{range $s.Recent}}
     <li{{if eq .State "cancelled"}} class="match-cancelled"{{end}}>
-      <span class="court-tag">{{.CourtLabel}}</span>
-      {{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}
+      <div class="match-label"><h3>{{.CourtLabel}}</h3>{{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}</div>
       {{template "matchteams" .}}
     </li>
   {{end}}

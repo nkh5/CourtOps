@@ -9,9 +9,11 @@
 </p>
 {{end}}
 
-<section class="card">
-  {{template "matchteams" $m}}
-  <p class="meta">Started {{clock $m.StartedAt}}</p>
+<section class="confirm-sheet">
+  <article class="court court-busy"><h3>{{$m.CourtLabel}}</h3>
+    {{template "matchteams" $m}}
+    <p class="court-foot">Started {{clock $m.StartedAt}}</p>
+  </article>
 
   {{if .Ratings}}
   <p class="banner banner-warn" role="note">

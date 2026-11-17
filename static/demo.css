@@ -1,23 +1,19 @@
-#demo [hidden] {display:none}
-.demo-intro {margin-bottom:1.5rem}
-.demo-intro p,.demo-status {color:var(--ink-soft)}
-.demo-create {display:grid;gap:1rem;max-width:36rem;justify-items:start;border-top:2px solid var(--ink);padding-top:1.25rem}
-#demo h2 {font:500 clamp(1.45rem,3vw,2rem)/1.2 var(--serif);margin:0 0 .8rem}
-.demo-create .field {width:100%}
-.demo-status:not(:empty) {padding:.65rem 1rem;background:var(--wash);border-radius:3px}
-.demo-status:empty {margin:0}
-.demo-panel {margin-top:2rem;border-top:2px solid var(--ink);padding-top:1.15rem}
-.demo-add {display:flex;align-items:flex-end;flex-wrap:wrap;gap:.7rem;margin-bottom:1.2rem}
-.demo-add .field {width:auto;flex:1 1 10rem}
-#demo .section-head {margin-bottom:1rem}
-#demo .section-head h2 {margin:0}
-#demo .court .row {margin-top:.85rem}
-#demo .award-stage {max-width:42rem}
-#demo .award-place h3 {color:white}
-#demo table {width:100%}
-#demo td:last-child {text-align:right}
-#demo .demo-standing {margin-top:1rem}
-#demo .demo-log {padding-left:1.5rem}
-#demo .demo-log li {border-bottom:1px solid var(--line);padding:.6rem 0}
-#demo .demo-log span {display:block;color:var(--ink-soft)}
-@media(max-width:36rem) {#demo .table :is(td,th) {padding:.5rem .25rem}}
+/* Practice event, run in the browser */
+#demo [hidden] { display: none; }
+.demo-intro { margin-bottom: 1.75rem; }
+.demo-intro p, .demo-status { color: var(--ink-soft); }
+.demo-intro p { margin: 0; }
+.demo-create { display: grid; gap: 1rem; max-width: 34rem; justify-items: start; border-top: 2px solid var(--ink); padding-top: .9rem; }
+#demo h2 { margin: 0 0 .25rem; }
+.demo-create .field { width: 100%; }
+.demo-status:not(:empty) { margin: 0 0 1.5rem; padding: .7rem 1rem; background: var(--wash); border-radius: var(--radius); color: var(--ink); }
+.demo-status:empty { margin: 0; }
+#demo-event > .section-head { margin-bottom: 1.5rem; }
+#demo-live > section:first-child { border-top: 2px solid var(--ink); padding-top: .9rem; margin-bottom: 2.75rem; }
+.demo-add { display: flex; align-items: flex-end; flex-wrap: wrap; gap: .75rem; margin-bottom: 1.25rem; }
+.demo-add .field { width: auto; flex: 1 1 10rem; }
+#demo-results > .recap-strip { margin-top: 1rem; }
+#demo-results > .award-stage { max-width: 34rem; margin-bottom: 2rem; }
+#demo-results > .table-scroll { max-width: 40rem; }
+#demo .table td:last-child { text-align: right; }
+.demo-matches { margin-top: 2.75rem; }

@@ -5,18 +5,21 @@
  <h1>{{$h.Player.Name}}</h1>
  <p class="sub">Player #{{$h.Player.ID}}</p>
 </div>
-<dl class="event-stats player-rating">
+<dl class="recap-strip player-rating">
  <div><dt>Current Elo</dt><dd>{{if $h.Player.RatedGames}}{{rating $h.Player.Rating}}{{else if $.Ratings}}{{rating $h.Player.Rating}} <span>starting Elo</span>{{else}}<span>Unrated</span>{{end}}</dd></div>
  <div><dt>Rated games</dt><dd>{{$h.Player.RatedGames}}</dd></div>
 </dl>
 <section class="board-results">
  <h2>Match History</h2>
- <ul class="results">{{range $h.Matches}}{{$e := index $h.Events .EventID}}
+ <ul class="results results-history">{{range $h.Matches}}{{$e := index $h.Events .EventID}}
  <li{{if eq .State "cancelled"}} class="match-cancelled"{{end}}>
-  <div class="page-heading"><h3>{{if eq $e.State "finished"}}<a href="/results/{{$e.ID}}">{{$e.Title}}</a>{{else}}<a href="/board/{{$e.ID}}">{{$e.Title}}</a>{{end}}</h3><span class="meta">{{date $e.Date}}</span></div>
-  <div class="row"><span class="court-tag">{{.CourtLabel}}</span><span class="meta">Match #{{.ID}} · {{matchDuration .}}</span>{{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}</div>
+  <div class="match-label">
+   <h3>{{if eq $e.State "finished"}}<a href="/results/{{$e.ID}}">{{$e.Title}}</a>{{else}}<a href="/board/{{$e.ID}}">{{$e.Title}}</a>{{end}}</h3>
+   <p>{{date $e.Date}} · {{.CourtLabel}} · Match #{{.ID}} · {{matchDuration .}}</p>
+   {{if eq .State "cancelled"}}<strong>Cancelled</strong>{{end}}
+   {{range .Players}}{{if eq .PlayerID $h.Player.ID}}{{if .RatingAfter}}<p>Elo after this game: {{ratingValue .RatingAfter}} ({{pdelta .}})</p>{{else}}<p>No Elo change recorded.</p>{{end}}{{end}}{{end}}
+  </div>
   {{template "matchteams" .}}
-  {{range .Players}}{{if eq .PlayerID $h.Player.ID}}{{if .RatingAfter}}<p class="meta">Your Elo after this game: {{ratingValue .RatingAfter}} ({{pdelta .}})</p>{{else}}<p class="meta">No Elo change recorded for this game.</p>{{end}}{{end}}{{end}}
  </li>{{else}}<li>No completed or cancelled matches to show.</li>{{end}}</ul>
  <nav class="row history-pagination" aria-label="Match history pages">
  {{if gt .HistoryPage 1}}<a class="button" href="/players/{{$h.Player.ID}}?page={{add .HistoryPage -1}}">Newer matches</a>{{end}}
